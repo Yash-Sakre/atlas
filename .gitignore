@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+dashboard/node_modules/
+
+# Build output (rebuilt via `npm run build:all` / CI / prepublishOnly)
+dist/
+dashboard/dist/
+
+# Atlas analysis output & per-user cache
+.atlas/
+.atlas-cache/
+
+# Local editor / agent settings
+.claude/
+
+# Logs & misc
+*.log
+npm-debug.log*
+.DS_Store
+.env
+.env.local
+coverage/
