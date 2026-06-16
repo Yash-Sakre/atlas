@@ -3,7 +3,6 @@ import Layout from './Layout';
 import Overview from './views/Overview';
 import AssetList from './views/AssetList';
 import RoutesView from './views/RoutesView';
-import TreeView from './views/TreeView';
 
 export default function App() {
   return (
@@ -59,7 +58,6 @@ export default function App() {
           }
         />
         <Route path="routes" element={<RoutesView />} />
-        <Route path="tree" element={<TreeView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

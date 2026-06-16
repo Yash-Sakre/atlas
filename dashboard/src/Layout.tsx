@@ -9,11 +9,10 @@ const NAV: Array<[string, string]> = [
   ['/utils', 'Utils'],
   ['/contexts', 'Contexts'],
   ['/routes', 'Routes'],
-  ['/tree', 'Tree'],
 ];
 
 /** Routes that use the fixed-viewport app-shell (no page scroll, no footer). */
-const APP_SHELL = new Set(['/components', '/hooks', '/utils', '/contexts', '/tree']);
+const APP_SHELL = new Set(['/components', '/hooks', '/utils', '/contexts']);
 
 function Logo() {
   return <FiSearch size={18} strokeWidth={2.2} aria-hidden="true" />;
@@ -46,9 +45,6 @@ export default function Layout() {
             ))}
           </nav>
           <div className="atlas-nav-cta">
-            <Button asChild variant="secondary" size="sm" className="max-[860px]:hidden">
-              <Link to="/tree">View tree</Link>
-            </Button>
             <Button asChild variant="primary" size="sm">
               <Link to="/">Overview</Link>
             </Button>
