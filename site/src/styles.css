@@ -98,7 +98,8 @@ nav, main, footer { position: relative; z-index: 1; }
 nav { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--canvas) 78%, transparent); backdrop-filter: saturate(140%) blur(14px); border-bottom: 1px solid var(--hairline-soft); }
 nav .wrap { display: flex; align-items: center; gap: 18px; height: 60px; }
 .brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 600; font-size: 16px; letter-spacing: -0.03em; }
-.brand .logo { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9999px; background: var(--surface-1); border: 1px solid var(--hairline-soft); font-size: 15px; }
+.brand .logo { display: inline-grid; place-items: center; width: 30px; height: 30px; line-height: 0; }
+.brand .logo svg { display: block; border-radius: 8px; }
 .nav-links { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .nav-links a:not(.btn) { padding: 7px 12px; border-radius: var(--r-pill); font-size: 14px; font-weight: 500; letter-spacing: -0.012em; color: var(--ink-muted); transition: color .15s, background-color .15s; }
 .nav-links a:not(.btn):hover, .nav-links a:not(.btn).active { color: var(--ink); background: var(--surface-1); }

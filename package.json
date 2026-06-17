@@ -1,6 +1,6 @@
 {
   "name": "codebase-atlas",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Atlas — scan a frontend codebase and auto-discover, analyze, and document every reusable asset (components, hooks, utils, contexts, stores, routes) using AST semantics — Storybook + Compodoc + Madge + auto-generated docs for modern frontends.",
   "license": "MIT",
   "type": "commonjs",

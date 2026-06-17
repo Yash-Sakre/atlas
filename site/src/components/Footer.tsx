@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import AtlasMark from './AtlasMark';
 import { GITHUB_URL, DOCS_REPO_URL, NPM_URL, ISSUES_URL, LICENSE_URL } from '../data/site';
 
 export default function Footer() {
@@ -8,7 +9,7 @@ export default function Footer() {
         <div className="foot-grid">
           <div className="foot-brand">
             <Link className="brand" to="/">
-              <span className="logo">🗺️</span> Atlas
+              <span className="logo"><AtlasMark size={30} /></span> Atlas
             </Link>
             <p>AST-powered discovery for frontend codebases. See what already exists before you build it again.</p>
           </div>
