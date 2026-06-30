@@ -23,7 +23,8 @@ export async function searchCommand(
 
   // Prefer the persisted index; rebuild if absent.
   const records = result.search?.length ? result.search : buildSearchIndex(allAssets(result));
-  const limit = flags.limit ? parseInt(flags.limit, 10) : 20;
+  const parsedLimit = flags.limit ? parseInt(flags.limit, 10) : 20;
+  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20;
   const hits = searchRecords(records, query, limit);
 
   if (flags.json) {

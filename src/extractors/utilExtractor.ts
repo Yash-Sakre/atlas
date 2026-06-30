@@ -65,7 +65,9 @@ export class UtilExtractor implements Extractor<UtilAsset> {
     const returnType = getReturnType(fn);
     const kind = classifyUtil(name, returnType);
     const bodyText = (fn.getBody?.() ?? fn).getText();
-    const pure = !isAsync && !SIDE_EFFECT_TOKENS.some((t) => new RegExp(`\\b${t}\\b`).test(bodyText));
+    // Match each side-effect token as a whole word, but not when it is a member
+    // access (`obj.fetch`, `state.window`) — those are not the global APIs.
+    const pure = !isAsync && !SIDE_EFFECT_TOKENS.some((t) => new RegExp(`(?<![.\\w])${t}\\b`).test(bodyText));
 
     const tags = ['utility', kind];
     if (getExportType(node) !== 'none') tags.push('exported');
@@ -97,8 +99,9 @@ export class UtilExtractor implements Extractor<UtilAsset> {
 }
 
 function classifyUtil(name: string, returnType: string): UtilKind {
+  // A boolean return, or a predicate-style name, makes it a validator.
   if (/^(is|has|can|should|validate|check|assert)[A-Z]/.test(name) || returnType === 'boolean') {
-    if (/^(is|has|can|should|validate|check|assert)/.test(name)) return 'validator';
+    return 'validator';
   }
   if (/^(format|to|parse|serialize|stringify|render|display|humanize|slugify)[A-Z]?/.test(name)) {
     return 'formatter';

@@ -7,7 +7,7 @@
  * `dependencies`. Uses the TS module resolver (not string matching) so aliases
  * and re-exports resolve correctly.
  */
-import { Node, SyntaxKind, type Identifier, type SourceFile } from 'ts-morph';
+import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
 import type { Asset, ExtractionContext, UsageReference } from '../core/types';
 import { rel } from '../core/project';
 import { getName } from '../extractors/ast-utils';
@@ -48,8 +48,8 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
 
   for (const file of ctx.sourceFiles) {
     const relF = rel(ctx.root, file.getFilePath());
-    const bindings = buildBindings(file, ctx, relF, byFileName, defaultByFile);
-    if (bindings.size === 0) continue;
+    const { bindings, namespaces } = buildBindings(file, ctx, relF, byFileName, defaultByFile);
+    if (bindings.size === 0 && namespaces.size === 0) continue;
 
     // Map of local asset name → id, for enclosing-asset attribution.
     const localAssetByName = new Map<string, string>();
@@ -57,28 +57,39 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
       if (a.path === relF) localAssetByName.set(a.name, a.id);
     }
 
-    for (const id of file.getDescendantsOfKind(SyntaxKind.Identifier)) {
-      const targetId = bindings.get(id.getText());
-      if (!targetId) continue;
-      const parent = id.getParent();
-      if (parent && DECL_PARENT_KINDS.has(parent.getKind()) && isNamePosition(id, parent)) continue;
-      // Skip the property name of `a.b` access (only the object matters).
-      if (parent && Node.isPropertyAccessExpression(parent) && parent.getNameNode() === id) continue;
-
+    // Record a reference to `targetId` whose location/kind come from `refNode`.
+    const record = (targetId: string, refNode: Node): void => {
       const target = byId.get(targetId);
-      if (!target) continue;
-
-      const ref: UsageReference = {
+      if (!target) return;
+      target.usedIn.push({
         filePath: relF,
-        line: id.getStartLineNumber(),
-        kind: classifyRef(id),
-      };
-      target.usedIn.push(ref);
+        line: refNode.getStartLineNumber(),
+        kind: classifyRef(refNode),
+      });
+      const enclosingId = enclosingAssetId(refNode, localAssetByName);
+      if (enclosingId && enclosingId !== targetId) deps.get(enclosingId)?.add(targetId);
+    };
 
-      // Attribute a dependency edge from the enclosing asset to the target.
-      const enclosingId = enclosingAssetId(id, localAssetByName);
-      if (enclosingId && enclosingId !== targetId) {
-        deps.get(enclosingId)?.add(targetId);
+    for (const id of file.getDescendantsOfKind(SyntaxKind.Identifier)) {
+      const text = id.getText();
+      const parent = id.getParent();
+
+      const targetId = bindings.get(text);
+      if (targetId) {
+        if (parent && DECL_PARENT_KINDS.has(parent.getKind()) && isNamePosition(id, parent)) continue;
+        // Skip the property name of `a.b` access (only the object matters).
+        if (parent && Node.isPropertyAccessExpression(parent) && parent.getNameNode() === id) continue;
+        record(targetId, id);
+        continue;
+      }
+
+      // Namespace member access: `import * as NS from 'm'; NS.useFoo()`.
+      const ns = namespaces.get(text);
+      if (ns && parent && Node.isPropertyAccessExpression(parent) && parent.getExpression() === id) {
+        const member = parent.getNameNode().getText();
+        const memberId =
+          byFileName.get(`${ns.targetRel}::${member}`) ?? resolveReExport(ns.file, member, ctx, byFileName);
+        if (memberId) record(memberId, parent);
       }
     }
   }
@@ -97,15 +108,22 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
   }
 }
 
-/** local identifier text → target asset id (imports + own-file assets). */
+interface FileBindings {
+  /** local identifier text → target asset id (imports + own-file assets). */
+  bindings: Map<string, string>;
+  /** local namespace name → resolved module, for `import * as NS` member access. */
+  namespaces: Map<string, { file: SourceFile; targetRel: string }>;
+}
+
 function buildBindings(
   file: SourceFile,
   ctx: ExtractionContext,
   relF: string,
   byFileName: Map<string, string>,
   defaultByFile: Map<string, string>,
-): Map<string, string> {
+): FileBindings {
   const bindings = new Map<string, string>();
+  const namespaces = new Map<string, { file: SourceFile; targetRel: string }>();
 
   // Own-file assets (captures intra-file usage like a sibling component).
   for (const [key, id] of byFileName) {
@@ -140,9 +158,12 @@ function buildBindings(
       const id = defaultByFile.get(targetRel) ?? resolveReExport(tf, 'default', ctx, byFileName);
       if (id) bindings.set(def.getText(), id);
     }
+    // `import * as NS from 'm'` — usage shows up later as `NS.member`.
+    const ns = imp.getNamespaceImport();
+    if (ns) namespaces.set(ns.getText(), { file: tf, targetRel });
   }
 
-  return bindings;
+  return { bindings, namespaces };
 }
 
 /**
@@ -174,7 +195,7 @@ function resolveReExport(
   return undefined;
 }
 
-function isNamePosition(id: Identifier, parent: Node): boolean {
+function isNamePosition(id: Node, parent: Node): boolean {
   const named = parent as unknown as { getNameNode?: () => Node };
   if (typeof named.getNameNode === 'function') {
     try {
@@ -186,20 +207,20 @@ function isNamePosition(id: Identifier, parent: Node): boolean {
   return true;
 }
 
-function classifyRef(id: Identifier): UsageReference['kind'] {
-  let n: Node | undefined = id;
+function classifyRef(node: Node): UsageReference['kind'] {
+  let n: Node | undefined = node;
   for (let i = 0; i < 3 && n; i++) {
     const k = n.getKind();
     if (k === SyntaxKind.JsxOpeningElement || k === SyntaxKind.JsxSelfClosingElement) return 'jsx';
     n = n.getParent();
   }
-  const parent = id.getParent();
-  if (parent && Node.isCallExpression(parent) && parent.getExpression() === id) return 'call';
+  const parent = node.getParent();
+  if (parent && Node.isCallExpression(parent) && parent.getExpression() === node) return 'call';
   return 'reference';
 }
 
-function enclosingAssetId(id: Identifier, localAssetByName: Map<string, string>): string | undefined {
-  for (const anc of id.getAncestors()) {
+function enclosingAssetId(node: Node, localAssetByName: Map<string, string>): string | undefined {
+  for (const anc of node.getAncestors()) {
     let name: string | undefined;
     if (Node.isFunctionDeclaration(anc) || Node.isClassDeclaration(anc)) name = anc.getName();
     else if (Node.isVariableDeclaration(anc)) name = anc.getName();

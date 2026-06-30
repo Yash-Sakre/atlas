@@ -63,7 +63,9 @@ export function loadConfig(rootInput: string, overrides: ConfigOverrides = {}): 
   return {
     root,
     include: overrides.include ?? user.include ?? DEFAULT_INCLUDE,
-    exclude: overrides.exclude ?? [...(user.exclude ?? []), ...DEFAULT_EXCLUDE],
+    // Built-in excludes (node_modules, dist, *.d.ts, …) always apply; user/CLI
+    // excludes are added on top rather than replacing them.
+    exclude: [...(overrides.exclude ?? user.exclude ?? []), ...DEFAULT_EXCLUDE],
     cache: overrides.noCache ? false : user.cache ?? true,
     outDir: overrides.outDir ?? user.outDir ?? '.atlas',
     plugins: user.plugins ?? [],

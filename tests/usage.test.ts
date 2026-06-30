@@ -84,6 +84,32 @@ describe('analyzeUsage re-export resolution', () => {
     expect(useThing.usageCount).toBeGreaterThan(0);
   });
 
+  it('counts a hook used through a namespace import (import * as)', () => {
+    const useThing = hookAsset('hooks/useThing.ts', 'useThing');
+    analyze(
+      {
+        '/hooks/useThing.ts': 'export function useThing() { return 1; }',
+        '/consumer.ts': "import * as hooks from './hooks/useThing';\nexport const go = () => hooks.useThing();",
+      },
+      [useThing],
+    );
+    expect(useThing.usageCount).toBeGreaterThan(0);
+    expect(useThing.usedIn.some((u) => u.kind === 'call')).toBe(true);
+  });
+
+  it('counts a hook used through a namespace import of a barrel', () => {
+    const useThing = hookAsset('hooks/useThing.ts', 'useThing');
+    analyze(
+      {
+        '/hooks/useThing.ts': 'export function useThing() { return 1; }',
+        '/hooks/index.ts': "export { useThing } from './useThing';",
+        '/consumer.ts': "import * as hooks from './hooks';\nexport const go = () => hooks.useThing();",
+      },
+      [useThing],
+    );
+    expect(useThing.usageCount).toBeGreaterThan(0);
+  });
+
   it('leaves a genuinely unused hook at zero', () => {
     const useThing = hookAsset('hooks/useThing.ts', 'useThing');
     analyze(

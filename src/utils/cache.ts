@@ -37,7 +37,9 @@ export class IncrementalCache {
     const fp = fileFingerprint(content, this.mtime(absPath));
     if (entry.fingerprint === fp) {
       this.hits++;
-      return entry.assets;
+      // Return a clone: downstream passes (usage/default-export resolution)
+      // mutate assets in place, which must not corrupt the cached copy.
+      return structuredClone(entry.assets);
     }
     this.misses++;
     return null;

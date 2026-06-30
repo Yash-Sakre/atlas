@@ -83,7 +83,7 @@ export class ComponentExtractor implements Extractor<ComponentAsset> {
       const name = cls.getName();
       if (!name || !isPascalCase(name)) continue;
       if (!extendsReactComponent(cls)) continue;
-      out.push(this.buildClass(name, cls, relPath, ctx, file));
+      push(this.buildClass(name, cls, relPath, ctx, file));
     }
 
     return out;

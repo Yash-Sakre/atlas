@@ -37,7 +37,10 @@ export function isHookName(name: string): boolean {
 
 export function location(node: Node, relPath: string): SourceLocation {
   const start = node.getStartLineNumber();
-  return { filePath: relPath, line: start, column: node.getStartLinePos() };
+  // Column within the line (0-based): node start offset minus the line's start
+  // offset. `getStartLinePos()` is the file offset of the line, not a column.
+  const column = node.getStart() - node.getStartLinePos();
+  return { filePath: relPath, line: start, column };
 }
 
 export function getLeadingJsDoc(node: Node): string | undefined {

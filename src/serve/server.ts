@@ -39,7 +39,16 @@ export function startServer(opts: ServeOptions): Promise<RunningServer> {
   const distDir = path.resolve(opts.distDir);
 
   const server = http.createServer((req, res) => {
-    const url = decodeURIComponent((req.url || '/').split('?')[0]);
+    // Malformed percent-escapes (e.g. `/%`) make decodeURIComponent throw;
+    // reject those instead of letting the exception crash the server.
+    let url: string;
+    try {
+      url = decodeURIComponent((req.url || '/').split('?')[0]);
+    } catch {
+      res.writeHead(400);
+      res.end('Bad request');
+      return;
+    }
 
     if (url === '/data.json') {
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-cache' });
@@ -50,8 +59,9 @@ export function startServer(opts: ServeOptions): Promise<RunningServer> {
     const rel = url === '/' ? '/index.html' : url;
     let filePath = path.join(distDir, path.normalize(rel));
 
-    // Guard against path traversal.
-    if (!filePath.startsWith(distDir)) {
+    // Guard against path traversal: the resolved path must be distDir itself or
+    // sit beneath it (a bare `startsWith` would also accept `<distDir>-evil`).
+    if (filePath !== distDir && !filePath.startsWith(distDir + path.sep)) {
       res.writeHead(403);
       res.end('Forbidden');
       return;

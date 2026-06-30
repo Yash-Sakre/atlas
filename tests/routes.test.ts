@@ -9,6 +9,7 @@ import type { ExtractionContext, FrameworkInfo, RouteAsset } from '../src/core/t
 const FW: Record<string, FrameworkInfo> = {
   reactRouter: { next: false, nextRouter: 'none', vite: true, reactRouter: true, tanstackRouter: false, react: true, stateLibs: [] },
   tanstack: { next: false, nextRouter: 'none', vite: true, reactRouter: false, tanstackRouter: true, react: true, stateLibs: [] },
+  next: { next: true, nextRouter: 'app', vite: false, reactRouter: false, tanstackRouter: false, react: true, stateLibs: [] },
 };
 
 /** Run the RouteExtractor over a single in-memory source file with a stub context. */
@@ -85,6 +86,21 @@ describe('RouteExtractor — framework gating', () => {
     );
     // tanstackRouter is false for this workspace → the createFileRoute call is ignored.
     expect(routes).toHaveLength(0);
+  });
+});
+
+describe('RouteExtractor — Next app-router path anchoring', () => {
+  const code = `export default function Page() { return null; }`;
+
+  it('detects app/ and src/app/ and monorepo apps/<x>/app routes', () => {
+    expect(extract(code, FW.next, 'app/dashboard/page.tsx')).toHaveLength(1);
+    expect(extract(code, FW.next, 'src/app/dashboard/page.tsx')).toHaveLength(1);
+    expect(extract(code, FW.next, 'apps/web/src/app/dashboard/page.tsx')).toHaveLength(1);
+  });
+
+  it('does NOT treat a non-root folder named app/ as a route', () => {
+    expect(extract(code, FW.next, 'components/app/page.tsx')).toHaveLength(0);
+    expect(extract(code, FW.next, 'lib/app/page.tsx')).toHaveLength(0);
   });
 });
 

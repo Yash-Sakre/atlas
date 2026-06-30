@@ -22,14 +22,24 @@ import { getLeadingJsDoc, location, makeId } from './ast-utils';
 
 const NEXT_SEGMENTS = ['page', 'layout', 'route', 'template', 'loading', 'error', 'default', 'not-found'];
 
+// An optional monorepo workspace prefix (`apps/web/`, `packages/ui/`, …) so the
+// Next `app`/`pages` dir is anchored to a project root and not matched inside an
+// arbitrary source folder such as `components/app/`.
+const WS_PREFIX = '(?:(?:apps|packages|services|libs|modules|examples)/[^/]+/)?';
+
 export class RouteExtractor implements Extractor<RouteAsset> {
   name = 'route';
   produces = 'route' as const;
+
+  /** Per-file ordinal so same-path routes (e.g. multiple index routes) get
+   * distinct ids and are not collapsed by the registry's id-based dedup. */
+  private seq = 0;
 
   extract(file: SourceFile, ctx: ExtractionContext): RouteAsset[] {
     const relPath = rel(ctx.root, file.getFilePath());
     const fw = ctx.frameworkOf(relPath);
     const out: RouteAsset[] = [];
+    this.seq = 0;
 
     if (fw.next) {
       const appRoute = this.nextAppRoute(file, relPath, ctx);
@@ -54,7 +64,7 @@ export class RouteExtractor implements Extractor<RouteAsset> {
 
   /* --------------------------- Next.js App Router ------------------------ */
   private nextAppRoute(file: SourceFile, relPath: string, ctx: ExtractionContext): RouteAsset | null {
-    const m = relPath.match(/(?:^|\/)(?:src\/)?app\/(.*)$/);
+    const m = relPath.match(new RegExp(`^${WS_PREFIX}(?:src/)?app/(.*)$`));
     if (!m) return null;
     const rest = m[1];
     const base = rest.split('/').pop()!.replace(/\.(t|j)sx?$/, '');
@@ -79,7 +89,7 @@ export class RouteExtractor implements Extractor<RouteAsset> {
 
   /* -------------------------- Next.js Pages Router ----------------------- */
   private nextPagesRoute(file: SourceFile, relPath: string, ctx: ExtractionContext): RouteAsset | null {
-    const m = relPath.match(/(?:^|\/)(?:src\/)?pages\/(.*)\.(t|j)sx?$/);
+    const m = relPath.match(new RegExp(`^${WS_PREFIX}(?:src/)?pages/(.*)\\.(t|j)sx?$`));
     if (!m) return null;
     let rest = m[1];
     if (/^_(app|document|error)$/.test(rest.split('/').pop()!)) return null;
@@ -186,7 +196,7 @@ export class RouteExtractor implements Extractor<RouteAsset> {
     childRoutes: string[] = [],
   ): RouteAsset {
     return {
-      id: makeId(relPath, `route:${routePath}:${router}`),
+      id: makeId(relPath, `route:${routePath}:${router}:${componentName ?? ''}#${this.seq++}`),
       name,
       type: 'route',
       path: relPath,

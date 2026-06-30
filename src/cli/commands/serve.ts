@@ -25,7 +25,15 @@ export async function serveCommand(flags: ServeFlags): Promise<void> {
   const result = await getCachedResult(config, flags.reanalyze);
   const dataStr = JSON.stringify(result);
 
-  const port = flags.port ? parseInt(flags.port, 10) : 4321;
+  let port = 4321;
+  if (flags.port !== undefined) {
+    const parsed = Number(flags.port);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
+      logger.warn(`Invalid --port "${flags.port}", falling back to ${port}.`);
+    } else {
+      port = parsed;
+    }
+  }
   const srv = await startServer({ distDir: dashboardDistDir(), getData: () => dataStr, port });
 
   logger.newline();

@@ -22,6 +22,8 @@ function importMap(file: SourceFile): Map<string, string> {
     const mod = imp.getModuleSpecifierValue();
     const def = imp.getDefaultImport();
     if (def) map.set(def.getText(), mod);
+    const ns = imp.getNamespaceImport();
+    if (ns) map.set(ns.getText(), mod);
     for (const named of imp.getNamedImports()) {
       map.set(named.getName(), mod);
       const alias = named.getAliasNode();
@@ -43,10 +45,10 @@ function classify(callee: string, imports: Map<string, string>): { kind: StateKi
   const root = callee.split('.')[0];
   const mod = imports.get(base) ?? imports.get(root);
 
-  if (base === 'createContext') return { kind: 'react-context', type: 'context' };
+  if (base === 'createContext' && mod === 'react') return { kind: 'react-context', type: 'context' };
   if (base === 'create' && mod === 'zustand') return { kind: 'zustand', type: 'store' };
   if (base === 'createStore' && mod === 'zustand') return { kind: 'zustand', type: 'store' };
-  if (base === 'createSlice') return { kind: 'redux-slice', type: 'store' };
+  if (base === 'createSlice' && mod === '@reduxjs/toolkit') return { kind: 'redux-slice', type: 'store' };
   if (base === 'atom' && mod === 'jotai') return { kind: 'jotai-atom', type: 'store' };
   if (base === 'atom' && mod === 'recoil') return { kind: 'recoil-atom', type: 'store' };
   if (base === 'atomWithStorage' && mod === 'jotai/utils') return { kind: 'jotai-atom', type: 'store' };

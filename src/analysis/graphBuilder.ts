@@ -22,13 +22,27 @@ export function buildGraph(assets: Asset[]): DependencyGraph {
     edges.push({ from, to, kind });
   };
 
-  // name → ids (for resolving JSX render references by component name)
-  const byName = new Map<string, string[]>();
+  // name → assets (for resolving JSX render references by component name)
+  const byName = new Map<string, Asset[]>();
   for (const a of assets) {
     const arr = byName.get(a.name) ?? [];
-    arr.push(a.id);
+    arr.push(a);
     byName.set(a.name, arr);
   }
+
+  // Resolve a rendered component name to a single target, preferring a match in
+  // the same file, then the same workspace, then an unambiguous global match.
+  // Resolving to *every* same-named asset would create false cross-file edges.
+  const resolveRender = (source: Asset, name: string): string | undefined => {
+    const candidates = byName.get(name);
+    if (!candidates || candidates.length === 0) return undefined;
+    if (candidates.length === 1) return candidates[0].id;
+    const sameFile = candidates.find((c) => c.path === source.path);
+    if (sameFile) return sameFile.id;
+    const sameWs = candidates.filter((c) => c.workspace === source.workspace);
+    if (sameWs.length === 1) return sameWs[0].id;
+    return undefined; // ambiguous → skip rather than invent an edge
+  };
 
   for (const a of assets) {
     for (const depId of a.dependencies) {
@@ -36,8 +50,8 @@ export function buildGraph(assets: Asset[]): DependencyGraph {
     }
     if (a.type === 'component') {
       for (const rendered of a.rendersComponents) {
-        const targets = byName.get(rendered);
-        if (targets) for (const t of targets) add(a.id, t, 'renders');
+        const targetId = resolveRender(a, rendered);
+        if (targetId) add(a.id, targetId, 'renders');
       }
     }
   }
