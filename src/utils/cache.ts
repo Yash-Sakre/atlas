@@ -6,21 +6,25 @@ import { fileFingerprint } from './hash';
 
 interface CacheShape {
   version: number;
+  /** Tool version that wrote this cache; a mismatch invalidates it so an atlas
+   *  upgrade (whose extraction logic may differ) does not reuse stale assets. */
+  tool: string;
   files: Record<string, { fingerprint: string; assets: Asset[] }>;
 }
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 export class IncrementalCache {
-  private data: CacheShape = { version: CACHE_VERSION, files: {} };
+  private data: CacheShape;
   private hits = 0;
   private misses = 0;
 
-  constructor(private readonly cachePath: string, enabled: boolean) {
+  constructor(private readonly cachePath: string, enabled: boolean, toolVersion = '0.0.0') {
+    this.data = { version: CACHE_VERSION, tool: toolVersion, files: {} };
     if (enabled && existsSync(cachePath)) {
       try {
         const parsed = JSON.parse(readFileSync(cachePath, 'utf8')) as CacheShape;
-        if (parsed.version === CACHE_VERSION) this.data = parsed;
+        if (parsed.version === CACHE_VERSION && parsed.tool === toolVersion) this.data = parsed;
       } catch {
         /* corrupt cache → start fresh */
       }

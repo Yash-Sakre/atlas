@@ -23,8 +23,12 @@ export async function getCachedResult(
     }
   }
 
+  // --reanalyze means a genuinely fresh analysis: also bypass the incremental
+  // per-file asset cache, not just the full-result cache above. Otherwise
+  // unchanged source files return cached assets that predate a tool upgrade.
+  const runConfig = reanalyze ? { ...config, cache: false } : config;
   const spin = logger.spinner('Analyzing codebase…');
-  const result = await runAnalysis(config, { skipDocs: false, ...spinnerHooks(spin) });
+  const result = await runAnalysis(runConfig, { skipDocs: false, ...spinnerHooks(spin) });
   spin(`Analyzed ${result.stats.fileCount} files in ${(result.stats.durationMs / 1000).toFixed(2)}s`);
 
   mkdirSync(projectCacheDir(config.root), { recursive: true });

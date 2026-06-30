@@ -53,7 +53,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   const extractors: Extractor[] = [...builtinExtractors(), ...plugins.flatMap((p) => p.extractors ?? [])];
 
   phase('Extracting assets');
-  const cache = new IncrementalCache(cachePathFor(config.root, config.outDir), config.cache);
+  const cache = new IncrementalCache(cachePathFor(config.root, config.outDir), config.cache, toolVersion());
   const assets = await extractWithCache(extractors, ctx, cache, hooks.onExtractProgress);
   cache.prune(new Set(sourceFiles.map((f) => rel(config.root, f.getFilePath()))));
   if (config.cache) cache.flush();
