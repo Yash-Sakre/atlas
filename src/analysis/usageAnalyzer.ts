@@ -10,7 +10,7 @@
 import { Node, SyntaxKind, type Identifier, type SourceFile } from 'ts-morph';
 import type { Asset, ExtractionContext, UsageReference } from '../core/types';
 import { rel } from '../core/project';
-import { makeId } from '../extractors/ast-utils';
+import { getName } from '../extractors/ast-utils';
 
 const DECL_PARENT_KINDS = new Set<SyntaxKind>([
   SyntaxKind.ImportSpecifier,
@@ -115,29 +115,63 @@ function buildBindings(
   }
 
   for (const imp of file.getImportDeclarations()) {
+    let tf: SourceFile | undefined;
     let targetRel: string | undefined;
     try {
-      const tf = imp.getModuleSpecifierSourceFile();
+      tf = imp.getModuleSpecifierSourceFile();
       if (tf) targetRel = rel(ctx.root, tf.getFilePath());
     } catch {
       /* unresolved */
     }
-    if (!targetRel) continue;
+    if (!tf || !targetRel) continue;
 
     for (const named of imp.getNamedImports()) {
       const importedName = named.getName();
       const local = named.getAliasNode()?.getText() ?? importedName;
-      const id = byFileName.get(`${targetRel}::${importedName}`);
+      // Direct: the name is defined in the resolved module.
+      let id = byFileName.get(`${targetRel}::${importedName}`);
+      // Fallback: the module re-exports it (barrel / `export … from`). Follow
+      // the chain to the file where it is actually declared.
+      if (!id) id = resolveReExport(tf, importedName, ctx, byFileName);
       if (id) bindings.set(local, id);
     }
     const def = imp.getDefaultImport();
     if (def) {
-      const id = defaultByFile.get(targetRel);
+      const id = defaultByFile.get(targetRel) ?? resolveReExport(tf, 'default', ctx, byFileName);
       if (id) bindings.set(def.getText(), id);
     }
   }
 
   return bindings;
+}
+
+/**
+ * Resolve `name` exported from `file` to the asset id of its real declaration,
+ * following re-export chains (barrel `index.ts` files). `getExportedDeclarations`
+ * does the transitive resolution; we map each declaration back to an asset by
+ * its source file + declared name.
+ */
+function resolveReExport(
+  file: SourceFile,
+  name: string,
+  ctx: ExtractionContext,
+  byFileName: Map<string, string>,
+): string | undefined {
+  let decls;
+  try {
+    decls = file.getExportedDeclarations().get(name);
+  } catch {
+    return undefined;
+  }
+  if (!decls) return undefined;
+  for (const decl of decls) {
+    const declName = getName(decl);
+    if (!declName) continue;
+    const declRel = rel(ctx.root, decl.getSourceFile().getFilePath());
+    const id = byFileName.get(`${declRel}::${declName}`);
+    if (id) return id;
+  }
+  return undefined;
 }
 
 function isNamePosition(id: Identifier, parent: Node): boolean {
