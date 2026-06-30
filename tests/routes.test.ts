@@ -89,6 +89,68 @@ describe('RouteExtractor — framework gating', () => {
   });
 });
 
+describe('RouteExtractor — data-router object config (declared, not inlined)', () => {
+  it('detects a route array passed to the router by reference (const, not inline)', () => {
+    const routes = extract(
+      `import { createBrowserRouter } from 'react-router-dom';
+       const routes = [
+         { path: '/', element: <Root />, children: [{ index: true, element: <Home /> }] },
+       ];
+       export const router = createBrowserRouter(routes);`,
+      FW.reactRouter,
+    );
+    const byPath = new Map(routes.map((r) => [r.routePath, r]));
+    expect(byPath.get('/')?.componentName).toBe('Root');
+    expect(byPath.has('(index)')).toBe(true);
+  });
+
+  it('detects an exported route array with no router call in the same file (cross-file pattern)', () => {
+    const routes = extract(
+      `export const routes = [
+         { path: 'a', element: <A /> },
+         { path: 'b', Component: B },
+       ];`,
+      FW.reactRouter,
+    );
+    const byPath = new Map(routes.map((r) => [r.routePath, r]));
+    expect(byPath.get('a')?.componentName).toBe('A');
+    expect(byPath.get('b')?.componentName).toBe('B');
+  });
+
+  it('surfaces a pathless layout route and keeps its children', () => {
+    const routes = extract(
+      `export const routes = [
+         { element: <Layout />, children: [{ path: 'x', element: <X /> }] },
+       ];`,
+      FW.reactRouter,
+    );
+    const byPath = new Map(routes.map((r) => [r.routePath, r]));
+    expect(byPath.get('(layout)')?.componentName).toBe('Layout');
+    expect(byPath.get('x')?.componentName).toBe('X');
+  });
+
+  it('picks the innermost component from a wrapped element tree', () => {
+    const routes = extract(
+      `export const routes = [
+         { path: 'p', element: <div><ErrorBoundaryWrapper><Page /></ErrorBoundaryWrapper></div> },
+       ];`,
+      FW.reactRouter,
+    );
+    expect(routes.find((r) => r.routePath === 'p')?.componentName).toBe('Page');
+  });
+
+  it('does NOT treat a non-route config array (nav items) as routes', () => {
+    const routes = extract(
+      `export const nav = [
+         { path: '/x', label: 'X', icon: Icon },
+         { path: '/y', label: 'Y' },
+       ];`,
+      FW.reactRouter,
+    );
+    expect(routes).toHaveLength(0);
+  });
+});
+
 describe('RouteExtractor — Next app-router path anchoring', () => {
   const code = `export default function Page() { return null; }`;
 

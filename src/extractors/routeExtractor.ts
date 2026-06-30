@@ -4,8 +4,10 @@
  * Routing is defined by the framework's own contract:
  *   - Next.js App Router  → file role (page/layout/route/...) + directory path
  *   - Next.js Pages Router→ file path under pages/
- *   - React Router        → <Route path element> JSX, createBrowserRouter([...]),
- *                           or lazy/nested object config
+ *   - React Router        → <Route path element> JSX, or object/data-router
+ *                           config arrays (`const routes = [{ path, element,
+ *                           children, lazy }]`) wherever they are declared —
+ *                           inline, in a const, or in a separate file
  *   - TanStack Router      → createFileRoute('/path'), createRoute({ path }),
  *                           createRootRoute(), new Route({ path })
  * For Next.js the path-based mapping IS the semantic source of truth (the
@@ -123,19 +125,23 @@ export class RouteExtractor implements Extractor<RouteAsset> {
       );
     }
 
-    // Object config: createBrowserRouter([{ path, element/Component }]) or useRoutes([...])
-    for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      const callee = call.getExpression().getText();
-      if (!/(createBrowserRouter|createHashRouter|createMemoryRouter|useRoutes|createRoutesFromElements)$/.test(callee)) {
-        continue;
-      }
-      const arg = call.getArguments()[0];
-      if (arg && Node.isArrayLiteralExpression(arg)) {
-        for (const r of collectRouteObjects(arg)) {
-          out.push(
-            this.make(file, relPath, `${r.path} → ${r.component ?? '?'}`, 'react-router', r.path, 'route', ctx, r.component, r.children),
-          );
-        }
+    // Object config (data router). Real apps rarely inline the array in the
+    // `createBrowserRouter(...)` call — they declare `const routes = [...]`
+    // (often in another file) and pass it by reference, e.g.
+    // `createHashRouter(useLicencedRoutes(routes))`. So instead of requiring the
+    // array to be a literal argument of a recognized call, detect every
+    // top-level route-config array literal in the file. Each file contributes
+    // the routes it defines, so a cross-file `export const routes = [...]` is
+    // picked up where it lives — no import resolution required.
+    const routeArrays = file
+      .getDescendantsOfKind(SyntaxKind.ArrayLiteralExpression)
+      .filter(looksLikeRouteArray)
+      .filter((arr) => !isNestedRouteArray(arr));
+    for (const arr of routeArrays) {
+      for (const r of collectRouteObjects(arr)) {
+        out.push(
+          this.make(file, relPath, `${r.path} → ${r.component ?? '?'}`, 'react-router', r.path, 'route', ctx, r.component, r.children),
+        );
       }
     }
 
@@ -267,11 +273,9 @@ function extractComponentName(attr: JsxAttribute): string | undefined {
   if (Node.isJsxExpression(init)) {
     const expr = init.getExpression();
     if (!expr) return undefined;
-    // element={<Foo/>}
-    if (Node.isJsxSelfClosingElement(expr) || Node.isJsxElement(expr)) {
-      const open = Node.isJsxElement(expr) ? expr.getOpeningElement() : expr;
-      return open.getTagNameNode().getText();
-    }
+    // element={<Foo/>} or a wrapped tree element={<Layout><Foo/></Layout>}
+    const name = jsxComponentName(expr);
+    if (name) return name;
     // Component={Foo}
     return expr.getText();
   }
@@ -284,6 +288,52 @@ interface ObjRoute {
   children: string[];
 }
 
+// Keys that mark an object literal as a react-router route config (rather than,
+// say, a nav-menu item that merely has a `path`). Requiring one of these avoids
+// false positives from arbitrary `{ path, label }` config arrays.
+const ROUTE_OBJECT_KEYS = [
+  'element',
+  'Component',
+  'component',
+  'children',
+  'lazy',
+  'loader',
+  'action',
+  'handle',
+  'errorElement',
+  'ErrorBoundary',
+];
+
+function looksLikeRouteObject(obj: Node): boolean {
+  if (!Node.isObjectLiteralExpression(obj)) return false;
+  const hasPathish = !!obj.getProperty('path') || !!obj.getProperty('index');
+  const hasRouteKey = ROUTE_OBJECT_KEYS.some((k) => !!obj.getProperty(k));
+  if (hasPathish && hasRouteKey) return true;
+  // Pathless layout route: no path, but a `children` array of route objects.
+  const childrenProp = obj.getProperty('children');
+  if (childrenProp && Node.isPropertyAssignment(childrenProp)) {
+    const v = childrenProp.getInitializer();
+    if (v && Node.isArrayLiteralExpression(v) && looksLikeRouteArray(v)) return true;
+  }
+  return false;
+}
+
+/** True if the array literal contains at least one react-router route object. */
+function looksLikeRouteArray(arr: Node): boolean {
+  return arr.getChildrenOfKind(SyntaxKind.ObjectLiteralExpression).some(looksLikeRouteObject);
+}
+
+/** True if this route array is nested inside another route array (a `children:`
+ *  array), so it is already handled by the parent's recursive collection. */
+function isNestedRouteArray(arr: Node): boolean {
+  let p = arr.getParent();
+  while (p) {
+    if (Node.isArrayLiteralExpression(p) && looksLikeRouteArray(p)) return true;
+    p = p.getParent();
+  }
+  return false;
+}
+
 function collectRouteObjects(arr: Node): ObjRoute[] {
   const out: ObjRoute[] = [];
   for (const el of arr.getChildrenOfKind(SyntaxKind.ObjectLiteralExpression)) {
@@ -293,10 +343,9 @@ function collectRouteObjects(arr: Node): ObjRoute[] {
     if (pathProp && Node.isPropertyAssignment(pathProp)) {
       const v = pathProp.getInitializer();
       if (v && Node.isStringLiteral(v)) path = v.getLiteralValue();
-    } else if (indexProp) {
-      path = '(index)';
     }
-    if (path === undefined) continue;
+    // `{ index: true }` (with or without an empty `path: ''`) is an index route.
+    if ((path === undefined || path === '') && indexProp) path = '(index)';
 
     const component = componentNameFromObject(el);
 
@@ -309,10 +358,47 @@ function collectRouteObjects(arr: Node): ObjRoute[] {
       if (v && Node.isArrayLiteralExpression(v)) nested.push(...collectRouteObjects(v));
     }
 
+    if (path === undefined) {
+      // Pathless layout route (e.g. an auth/error layout wrapper). Surface it
+      // only when it actually wraps something, and keep its children so the
+      // nested paths are not lost.
+      if (component || nested.length) {
+        out.push({ path: '(layout)', component, children: nested.map((c) => c.path) });
+        out.push(...nested);
+      }
+      continue;
+    }
+
     out.push({ path, component, children: nested.map((c) => c.path) });
     out.push(...nested);
   }
   return out;
+}
+
+/**
+ * Pick the meaningful component name from a route `element` value, which is
+ * often a wrapped tree like `(<Layout><ErrorBoundary><Page/></ErrorBoundary></Layout>)`.
+ * We take the innermost PascalCase JSX tag (the page) rather than dumping the
+ * whole JSX expression or returning a generic wrapper / host element.
+ */
+function jsxComponentName(node: Node): string | undefined {
+  let n = node;
+  while (Node.isParenthesizedExpression(n)) n = n.getExpression() ?? n;
+
+  const tags: string[] = [];
+  if (Node.isJsxSelfClosingElement(n)) tags.push(n.getTagNameNode().getText());
+  else if (Node.isJsxElement(n)) tags.push(n.getOpeningElement().getTagNameNode().getText());
+  for (const d of n.getDescendants()) {
+    if (Node.isJsxOpeningElement(d) || Node.isJsxSelfClosingElement(d)) {
+      tags.push(d.getTagNameNode().getText());
+    }
+  }
+  if (tags.length === 0) return undefined;
+
+  const isPascal = (t: string) => /^[A-Z]/.test(t.split('.').pop() ?? t);
+  const pascal = tags.filter(isPascal);
+  // innermost (last in document order) component, else the first tag (host elem)
+  return pascal.length ? pascal[pascal.length - 1] : tags[0];
 }
 
 /** Component for a route object: element/Component/component, else a lazy import basename. */
@@ -323,9 +409,9 @@ function componentNameFromObject(el: Node | undefined): string | undefined {
     if (p && Node.isPropertyAssignment(p)) {
       const v = p.getInitializer();
       if (!v) continue;
-      if (Node.isJsxSelfClosingElement(v)) return v.getTagNameNode().getText();
-      if (Node.isJsxElement(v)) return v.getOpeningElement().getTagNameNode().getText();
-      return v.getText();
+      const name = jsxComponentName(v);
+      if (name) return name;
+      if (Node.isIdentifier(v)) return v.getText();
     }
   }
   // lazy: () => import('./Dashboard')  /  lazy: () => import('./Dashboard').then(...)
