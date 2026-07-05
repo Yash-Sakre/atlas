@@ -1,10 +1,16 @@
-import type { Asset, Description, Param } from '../types';
-import { SourceBadge, Tag, TypeBadge } from '../ui';
+import { FiArrowRight } from 'react-icons/fi';
+import type { Asset, Description, Param, UsageRef } from '../types';
+import { useData } from '../data';
+import { EditorLink, SourceBadge, Tag, TypeBadge } from '../ui';
+
+function pluralize(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
 
 function ParamsTable({ rows, kind }: { rows?: Param[]; kind: string }) {
-  if (!rows || !rows.length) return <p className="atlas-muted" style={{ fontSize: 14 }}>No {kind}.</p>;
+  if (!rows || !rows.length) return <p className="atlas-muted atlas-detail-none">No {kind}.</p>;
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="atlas-table-wrap">
       <table className="atlas-table">
         <thead>
           <tr>
@@ -17,13 +23,13 @@ function ParamsTable({ rows, kind }: { rows?: Param[]; kind: string }) {
         <tbody>
           {rows.map((p, i) => (
             <tr key={i}>
-              <td className="mono" style={{ color: '#7fc4ff' }}>{p.name}</td>
-              <td className="mono" style={{ color: '#7be3a8', wordBreak: 'break-all' }}>{p.type}</td>
+              <td className="mono" style={{ color: 'var(--t-component)' }}>{p.name}</td>
+              <td className="mono" style={{ color: 'var(--t-utility)', wordBreak: 'break-all' }}>{p.type}</td>
               <td>
                 {p.optional ? (
                   <span className="atlas-faint">opt</span>
                 ) : (
-                  <span style={{ color: '#ff9bb0' }}>req</span>
+                  <span style={{ color: 'var(--danger)' }}>req</span>
                 )}
               </td>
               <td className="mono atlas-muted">{p.defaultValue || '—'}</td>
@@ -35,54 +41,73 @@ function ParamsTable({ rows, kind }: { rows?: Param[]; kind: string }) {
   );
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="atlas-detail-section">
+      <h3 className="atlas-detail-section-title">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
 function ListBlock({ title, items }: { title: string; items?: string[] }) {
   if (!items || !items.length) return null;
   return (
-    <div style={{ marginTop: 20 }}>
-      <h4 className="atlas-subhead">{title}</h4>
-      <ul style={{ listStyle: 'disc', paddingLeft: 18, margin: 0, fontSize: 14 }}>
+    <Section title={title}>
+      <ul className="atlas-detail-list">
         {items.map((i, k) => (
-          <li key={k} style={{ color: 'var(--ink-muted)', margin: '2px 0' }}>{i}</li>
+          <li key={k}>{i}</li>
         ))}
       </ul>
+    </Section>
+  );
+}
+
+function Note({ tone, label, children }: { tone: 'do' | 'dont'; label: string; children: React.ReactNode }) {
+  return (
+    <div className={`atlas-note atlas-note--${tone}`}>
+      <span className="atlas-note-label">{label}</span>
+      <p className="atlas-note-body">{children}</p>
     </div>
   );
 }
 
 function DescriptionBlock({ d }: { d?: Description }) {
-  if (!d) return <p className="atlas-muted" style={{ fontSize: 14 }}>No description available.</p>;
+  if (!d) return <p className="atlas-muted atlas-detail-none">No description available.</p>;
+  const hasIO = d.inputs || d.outputs;
+  const hasNotes = d.whenToUse || d.whenNotToUse;
   return (
     <>
-      <div style={{ marginBottom: 10 }}>
-        <SourceBadge source={d.source} />
-      </div>
-      {d.purpose && <p style={{ color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>{d.purpose}</p>}
-      {d.inputs && (
-        <p style={{ marginTop: 12, fontSize: 14 }}>
-          <span className="atlas-faint">Inputs:</span> <span className="atlas-muted">{d.inputs}</span>
-        </p>
+      {d.purpose && <p className="atlas-desc-lead">{d.purpose}</p>}
+
+      {hasIO && (
+        <dl className="atlas-desc-io">
+          {d.inputs && (
+            <div>
+              <dt>Inputs</dt>
+              <dd>{d.inputs}</dd>
+            </div>
+          )}
+          {d.outputs && (
+            <div>
+              <dt>Outputs</dt>
+              <dd>{d.outputs}</dd>
+            </div>
+          )}
+        </dl>
       )}
-      {d.outputs && (
-        <p style={{ fontSize: 14 }}>
-          <span className="atlas-faint">Outputs:</span> <span className="atlas-muted">{d.outputs}</span>
-        </p>
+
+      {hasNotes && (
+        <div className="atlas-notes">
+          {d.whenToUse && <Note tone="do" label="When to use">{d.whenToUse}</Note>}
+          {d.whenNotToUse && <Note tone="dont" label="When not to use">{d.whenNotToUse}</Note>}
+        </div>
       )}
-      {d.whenToUse && (
-        <p style={{ marginTop: 12, fontSize: 14 }}>
-          <span style={{ color: 'var(--success)' }}>When to use:</span>{' '}
-          <span className="atlas-muted">{d.whenToUse}</span>
-        </p>
-      )}
-      {d.whenNotToUse && (
-        <p style={{ fontSize: 14 }}>
-          <span style={{ color: '#ff9bb0' }}>When not to use:</span>{' '}
-          <span className="atlas-muted">{d.whenNotToUse}</span>
-        </p>
-      )}
+
       <ListBlock title="Responsibilities" items={d.responsibilities} />
       <ListBlock title="Improvements" items={d.improvements} />
       {d.examples?.map((ex, i) => (
-        <div key={i} style={{ marginTop: 20 }}>
+        <div key={i} className="atlas-detail-section">
           <h4 className="atlas-subhead">Example</h4>
           <pre className="atlas-code">{ex}</pre>
         </div>
@@ -91,79 +116,119 @@ function DescriptionBlock({ d }: { d?: Description }) {
   );
 }
 
-export default function Detail({ asset }: { asset: Asset }) {
+/** Usage references as clickable "open in editor" rows, capped for length. */
+function UsageList({ root, refs }: { root?: string; refs: UsageRef[] }) {
+  const CAP = 40;
+  const shown = refs.slice(0, CAP);
   return (
-    <div style={{ padding: 28 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <TypeBadge type={asset.type} />
-        <span className="atlas-faint mono" style={{ fontSize: 12 }}>{asset.path}</span>
-      </div>
-      <h2 className="atlas-display mono" style={{ fontSize: 30, letterSpacing: '-0.03em' }}>
-        {asset.name}
-      </h2>
-
-      {asset.signature && (
-        <pre className="atlas-code" style={{ marginTop: 14, color: '#9cd0ff' }}>{asset.signature}</pre>
+    <Section title={`Usage references (${refs.length})`}>
+      <ul className="atlas-usagelist">
+        {shown.map((u, i) => (
+          <li key={i} className="atlas-usagerow">
+            <EditorLink root={root} path={u.filePath} line={u.line} className="atlas-usagerow-loc">
+              <span className="mono atlas-trunc">{u.filePath}</span>
+              <span className="atlas-usagerow-line tnum">:{u.line}</span>
+            </EditorLink>
+            <span className="atlas-usagerow-kind">{u.kind}</span>
+          </li>
+        ))}
+      </ul>
+      {refs.length > CAP && (
+        <p className="atlas-faint atlas-usagelist-more">+{refs.length - CAP} more…</p>
       )}
+    </Section>
+  );
+}
 
-      <p className="atlas-muted" style={{ marginTop: 14, fontSize: 14 }}>
-        Used in <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{asset.usageCount || 0}</span>{' '}
-        place(s).
-      </p>
-
-      {asset.tags && asset.tags.length > 0 && (
-        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {asset.tags.map((t, i) => (
-            <Tag key={i}>{t}</Tag>
-          ))}
+export default function Detail({ asset }: { asset: Asset }) {
+  const root = useData().meta.root;
+  const usage = asset.usageCount || 0;
+  return (
+    <div className="atlas-detail-body">
+      <header className="atlas-detail-hero">
+        <div className="atlas-detail-eyebrow">
+          <TypeBadge type={asset.type} />
+          <EditorLink
+            root={root}
+            path={asset.path}
+            line={asset.location?.line}
+            column={asset.location?.column}
+            className="atlas-detail-path"
+          >
+            <span className="atlas-faint mono atlas-trunc">{asset.path}</span>
+          </EditorLink>
         </div>
-      )}
 
-      {asset.props ? (
-        <>
-          <h3 className="atlas-section-title" style={{ fontSize: 16, margin: '24px 0 10px' }}>Props</h3>
-          <ParamsTable rows={asset.props} kind="props" />
-        </>
-      ) : asset.params ? (
-        <>
-          <h3 className="atlas-section-title" style={{ fontSize: 16, margin: '24px 0 10px' }}>Parameters</h3>
-          <ParamsTable rows={asset.params} kind="parameters" />
-          {asset.returnType && (
-            <p style={{ marginTop: 10, fontSize: 14 }}>
-              <span className="atlas-faint">Returns:</span>{' '}
-              <span className="mono" style={{ color: '#7be3a8' }}>{asset.returnType}</span>
-            </p>
-          )}
-        </>
-      ) : null}
+        <h2 className="atlas-detail-name mono">{asset.name}</h2>
 
-      <ListBlock title="State shape" items={asset.stateShape} />
-
-      {asset.routePath && (
-        <div style={{ marginTop: 16, fontSize: 14 }}>
-          <span className="atlas-faint">Route:</span>{' '}
-          <span className="mono" style={{ color: '#e6a3ff' }}>{asset.routePath}</span>
-          {asset.componentName && (
+        <div className="atlas-detail-metastrip">
+          <span className="atlas-detail-metastat">
+            <b className="tnum">{usage}</b> {usage === 1 ? 'usage' : 'usages'}
+          </span>
+          {asset.description?.source && (
             <>
-              {' '}
-              <span className="atlas-faint">→</span>{' '}
-              <span className="mono" style={{ color: '#7fc4ff' }}>{asset.componentName}</span>
+              <span className="atlas-detail-metasep" />
+              <SourceBadge source={asset.description.source} />
             </>
           )}
         </div>
+
+        {asset.signature && (
+          <pre className="atlas-code atlas-detail-signature">{asset.signature}</pre>
+        )}
+
+        {asset.tags && asset.tags.length > 0 && (
+          <div className="atlas-detail-tags">
+            {asset.tags.map((t, i) => (
+              <Tag key={i}>{t}</Tag>
+            ))}
+          </div>
+        )}
+      </header>
+
+      {asset.props ? (
+        <Section title="Props">
+          <ParamsTable rows={asset.props} kind="props" />
+        </Section>
+      ) : asset.params ? (
+        <Section title="Parameters">
+          <ParamsTable rows={asset.params} kind="parameters" />
+          {asset.returnType && (
+            <p className="atlas-detail-returns">
+              <span className="atlas-faint">Returns</span>{' '}
+              <span className="mono" style={{ color: 'var(--t-utility)' }}>{asset.returnType}</span>
+            </p>
+          )}
+        </Section>
+      ) : null}
+
+      {asset.stateShape && asset.stateShape.length > 0 && (
+        <ListBlock title="State shape" items={asset.stateShape} />
       )}
 
-      <h3 className="atlas-section-title" style={{ fontSize: 16, margin: '26px 0 10px' }}>Description</h3>
-      <div className="atlas-card" style={{ padding: 18, borderRadius: 'var(--r-lg)' }}>
-        <DescriptionBlock d={asset.description} />
-      </div>
+      {asset.routePath && (
+        <Section title="Route">
+          <div className="atlas-route-line">
+            <span className="mono" style={{ color: 'var(--t-route)' }}>{asset.routePath}</span>
+            {asset.componentName && (
+              <>
+                <FiArrowRight size={13} className="atlas-faint" aria-hidden="true" />
+                <span className="mono" style={{ color: 'var(--t-component)' }}>{asset.componentName}</span>
+              </>
+            )}
+          </div>
+        </Section>
+      )}
+
+      <Section title="Description">
+        <div className="atlas-desc">
+          <DescriptionBlock d={asset.description} />
+        </div>
+      </Section>
 
       <ListBlock title="Dependencies" items={asset.dependencies} />
       {asset.usedIn && asset.usedIn.length > 0 && (
-        <ListBlock
-          title="Usage references"
-          items={asset.usedIn.slice(0, 40).map((u) => `${u.filePath}:${u.line} (${u.kind})`)}
-        />
+        <UsageList root={root} refs={asset.usedIn} />
       )}
     </div>
   );

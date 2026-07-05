@@ -14,10 +14,10 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-between gap-2 rounded-full bg-[var(--surface-1)] text-[var(--ink-muted)]',
-      'border border-[var(--hairline-soft)] px-4 py-[11px] text-sm tracking-[-0.012em] cursor-pointer',
-      'transition-[border-color,box-shadow,color] duration-150 whitespace-nowrap',
-      'focus:outline-none focus:border-[var(--accent-ring)] focus:ring-[3px] focus:ring-[var(--accent-soft)] focus:text-[var(--ink)]',
+      'inline-flex items-center justify-between gap-2 rounded-full bg-[var(--surface-2)] text-[var(--ink-muted)]',
+      'px-4 py-[11px] text-sm tracking-[-0.012em] cursor-pointer',
+      'transition-[box-shadow,color] duration-150 whitespace-nowrap',
+      'focus:outline-none focus:ring-[3px] focus:ring-[var(--accent-soft)] focus:text-[var(--ink)]',
       'data-[placeholder]:text-[var(--ink-muted)] [&>span]:truncate',
       className,
     )}
@@ -40,7 +40,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'z-50 min-w-[8rem] overflow-hidden rounded-[var(--r-md)] border border-[var(--hairline)] bg-[var(--surface-2)] p-1.5',
+        'z-50 min-w-[8rem] overflow-hidden rounded-[var(--r-md)] bg-[var(--surface-2)] p-1.5',
         'shadow-[0_20px_56px_-18px_rgba(0,0,0,0.75)]',
         position === 'popper' && 'data-[side=bottom]:translate-y-1.5',
         className,

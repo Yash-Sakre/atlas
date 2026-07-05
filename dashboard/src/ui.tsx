@@ -1,8 +1,9 @@
 /** Shared presentational primitives reused across views. */
 import { useMemo, type ReactNode } from 'react';
 import Fuse from 'fuse.js';
-import { FiSearch } from 'react-icons/fi';
+import { FiSearch, FiExternalLink } from 'react-icons/fi';
 import type { AssetType } from './types';
+import { editorHref } from './lib/editor';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,50 @@ export function SourceBadge({ source }: { source?: string }) {
 
 export function Tag({ children }: { children: ReactNode }) {
   return <Badge variant="tag">{children}</Badge>;
+}
+
+/**
+ * A link that opens a source file in the user's editor (VS Code by default).
+ * Renders plain, non-interactive content when no location can be resolved, so
+ * it's always safe to drop into a table cell or row.
+ */
+export function EditorLink({
+  root,
+  path,
+  line,
+  column,
+  children,
+  className,
+  iconOnly,
+}: {
+  root?: string;
+  path?: string;
+  line?: number;
+  column?: number;
+  children?: ReactNode;
+  className?: string;
+  /** Render only the icon (for dense rows/tables). */
+  iconOnly?: boolean;
+}) {
+  const href = editorHref(root, path, line, column);
+  const label = `Open ${path ?? 'file'}${line ? `:${line}` : ''} in editor`;
+
+  if (!href) {
+    // No resolvable target — show the content inertly rather than a dead link.
+    return iconOnly ? null : <span className={className}>{children}</span>;
+  }
+
+  return (
+    <a
+      href={href}
+      className={cn('atlas-editorlink', iconOnly && 'atlas-editorlink--icon', className)}
+      title={label}
+      aria-label={iconOnly ? label : undefined}
+    >
+      {children}
+      <FiExternalLink className="atlas-editorlink-glyph" aria-hidden="true" />
+    </a>
+  );
 }
 
 /** A search input with the inline magnifier glyph (react-icons). */

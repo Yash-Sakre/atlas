@@ -1,61 +1,66 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FiInbox } from 'react-icons/fi';
 import { useData } from '../data';
 import type { Asset } from '../types';
 import { SearchField, TypeBadge } from '../ui';
 import Detail from './Detail';
 
-function RouteNode({
-  route,
-  byPath,
-  seen,
+function RouteLabel({ route }: { route: Asset }) {
+  return (
+    <>
+      <TypeBadge type="route" />
+      <span className="atlas-tree-node-label" style={{ color: 'var(--t-route)' }}>
+        {route.routePath || route.name}
+      </span>
+      {route.segmentKind && (
+        <span className="atlas-faint mono" style={{ fontSize: 10 }}>
+          [{route.segmentKind}]
+        </span>
+      )}
+      {route.componentName && (
+        <>
+          <span className="atlas-faint">→</span>
+          <span className="mono atlas-tree-node-label" style={{ color: 'var(--t-component)' }}>
+            {route.componentName}
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
+/** A route plus its already-resolved children — a pure tree, built once in useMemo. */
+interface RouteTreeNode {
+  route: Asset;
+  children: RouteTreeNode[];
+}
+
+/** Pure recursive renderer — no side effects, so it's StrictMode-safe. */
+function RouteTree({
+  nodes,
   onSelect,
   selectedId,
 }: {
-  route: Asset;
-  byPath: Record<string, Asset>;
-  seen: Set<string>;
+  nodes: RouteTreeNode[];
   onSelect: (a: Asset) => void;
   selectedId: string | null;
 }) {
-  if (seen.has(route.id)) return null;
-  seen.add(route.id);
-  const kids = (route.childRoutes || []).map((c) => byPath[c]).filter(Boolean) as Asset[];
   return (
-    <li>
-      <button
-        className="atlas-tree-node"
-        style={route.id === selectedId ? { background: 'var(--surface-2)', borderColor: 'var(--hairline)' } : undefined}
-        onClick={() => onSelect(route)}
-      >
-        <TypeBadge type="route" />
-        <span style={{ color: '#e6a3ff' }}>{route.routePath || route.name}</span>
-        {route.segmentKind && (
-          <span className="atlas-faint mono" style={{ fontSize: 10, marginLeft: 2 }}>
-            [{route.segmentKind}]
-          </span>
-        )}
-        {route.componentName && (
-          <>
-            <span className="atlas-faint"> → </span>
-            <span className="mono" style={{ color: '#7fc4ff' }}>{route.componentName}</span>
-          </>
-        )}
-      </button>
-      {kids.length > 0 && (
-        <ul className="atlas-tree">
-          {kids.map((k) => (
-            <RouteNode
-              key={k.id}
-              route={k}
-              byPath={byPath}
-              seen={seen}
-              onSelect={onSelect}
-              selectedId={selectedId}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
+    <ul className="atlas-tree">
+      {nodes.map((n) => (
+        <li key={n.route.id}>
+          <button
+            className={`atlas-tree-node${n.route.id === selectedId ? ' is-active' : ''}`}
+            onClick={() => onSelect(n.route)}
+          >
+            <RouteLabel route={n.route} />
+          </button>
+          {n.children.length > 0 && (
+            <RouteTree nodes={n.children} onSelect={onSelect} selectedId={selectedId} />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -65,7 +70,7 @@ export default function RoutesView() {
   const [selected, setSelected] = useState<Asset | null>(null);
   const [query, setQuery] = useState('');
 
-  const { roots, byPath } = useMemo(() => {
+  const tree = useMemo(() => {
     const byPathMap: Record<string, Asset> = {};
     routes.forEach((r) => {
       if (r.routePath) byPathMap[r.routePath] = r;
@@ -74,8 +79,28 @@ export default function RoutesView() {
     routes.forEach((r) => (r.childRoutes || []).forEach((c) => childPaths.add(c)));
     let rootList = routes.filter((r) => !r.routePath || !childPaths.has(r.routePath));
     if (!rootList.length) rootList = routes;
-    return { roots: rootList, byPath: byPathMap };
+
+    // Resolve the nested structure once here (cycle-guarded), so rendering stays pure.
+    const seen = new Set<string>();
+    const build = (r: Asset): RouteTreeNode | null => {
+      if (seen.has(r.id)) return null;
+      seen.add(r.id);
+      const children = (r.childRoutes || [])
+        .map((c) => byPathMap[c])
+        .filter(Boolean)
+        .map(build)
+        .filter(Boolean) as RouteTreeNode[];
+      return { route: r, children };
+    };
+    return rootList.map(build).filter(Boolean) as RouteTreeNode[];
   }, [routes]);
+
+  // Auto-select the first route on wide screens so the detail pane isn't empty.
+  useEffect(() => {
+    const isNarrow = window.matchMedia('(max-width: 900px)').matches;
+    if (!selected && !isNarrow && tree.length) setSelected(tree[0].route);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const ql = query.trim().toLowerCase();
   const matches = useMemo(() => {
@@ -89,77 +114,64 @@ export default function RoutesView() {
 
   return (
     <>
-      <div className="mb-10">
-        <p className="atlas-eyebrow">Navigation</p>
-        <h1 className="atlas-page-title">Routes</h1>
-        <p className="atlas-lead">Route tree discovered from the router configuration</p>
+      <div className="atlas-pagehead">
+        <div className="atlas-pagehead-main">
+          <h1 className="atlas-pagehead-title">Routes</h1>
+          <p className="atlas-pagehead-sub">Route tree discovered from the router configuration</p>
+        </div>
+        <div className="atlas-pagehead-side">
+          <span className="atlas-pill tnum">{routes.length} routes</span>
+        </div>
       </div>
 
       {routes.length === 0 ? (
-        <div className="atlas-card" style={{ padding: 24 }}>
-          <p className="atlas-faint">No routes found.</p>
+        <div className="atlas-empty atlas-card" style={{ padding: 48 }}>
+          <FiInbox size={28} strokeWidth={1.5} />
+          <p>No routes found in this project.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="atlas-card" style={{ padding: 24 }}>
-            <div className="mb-5" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <SearchField value={query} onChange={setQuery} placeholder="Filter routes by path or component…" />
-              <span className="atlas-faint" style={{ fontSize: 13, flexShrink: 0 }}>
-                {ql ? `${matches.length}/${routes.length}` : routes.length}
+        <div className="atlas-split">
+          <aside className="atlas-side">
+            <div className="atlas-filterbar">
+              <SearchField value={query} onChange={setQuery} placeholder="Filter routes…" />
+              <span className="atlas-filter-count">
+                <b>{ql ? matches.length : routes.length}</b> / {routes.length}
               </span>
             </div>
-            {ql ? (
-              matches.length === 0 ? (
-                <p className="atlas-faint" style={{ padding: '8px 0' }}>No routes match “{query}”.</p>
+            <div className="atlas-side-list" style={{ paddingTop: 4 }}>
+              {ql ? (
+                matches.length === 0 ? (
+                  <div className="atlas-empty">No routes match “{query}”.</div>
+                ) : (
+                  <ul className="atlas-tree atlas-tree--flat">
+                    {matches.map((r) => (
+                      <li key={r.id}>
+                        <button
+                          className={`atlas-tree-node${r.id === selected?.id ? ' is-active' : ''}`}
+                          onClick={() => setSelected(r)}
+                        >
+                          <RouteLabel route={r} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )
               ) : (
-                <ul className="atlas-tree atlas-tree--flat">
-                  {matches.map((r) => (
-                    <li key={r.id}>
-                      <button
-                        className="atlas-tree-node"
-                        style={r.id === selected?.id ? { background: 'var(--surface-2)', borderColor: 'var(--hairline)' } : undefined}
-                        onClick={() => setSelected(r)}
-                      >
-                        <TypeBadge type="route" />
-                        <span style={{ color: '#e6a3ff' }}>{r.routePath || r.name}</span>
-                        {r.componentName && (
-                          <>
-                            <span className="atlas-faint"> → </span>
-                            <span className="mono" style={{ color: '#7fc4ff' }}>{r.componentName}</span>
-                          </>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : (
-              <ul className="atlas-tree">
-                {(() => {
-                  const seen = new Set<string>();
-                  return roots.map((r) => (
-                    <RouteNode
-                      key={r.id}
-                      route={r}
-                      byPath={byPath}
-                      seen={seen}
-                      onSelect={setSelected}
-                      selectedId={selected?.id || null}
-                    />
-                  ));
-                })()}
-              </ul>
-            )}
-          </div>
-          <div className="atlas-card" style={{ overflow: 'hidden', position: 'sticky', top: 80 }}>
+                <RouteTree nodes={tree} onSelect={setSelected} selectedId={selected?.id || null} />
+              )}
+            </div>
+          </aside>
+
+          <section className="atlas-detail atlas-card">
             {selected ? (
               <Detail asset={selected} />
             ) : (
-              <div className="atlas-detail-empty" style={{ minHeight: 280 }}>
+              <div className="atlas-detail-empty">
+                <FiInbox size={32} strokeWidth={1.5} />
                 <p>Select a route to view its details</p>
               </div>
             )}
-          </div>
+          </section>
         </div>
       )}
     </>

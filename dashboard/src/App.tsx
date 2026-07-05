@@ -3,6 +3,7 @@ import Layout from './Layout';
 import Overview from './views/Overview';
 import AssetList from './views/AssetList';
 import RoutesView from './views/RoutesView';
+import DeadCode from './views/DeadCode';
 
 export default function App() {
   return (
@@ -15,9 +16,8 @@ export default function App() {
             <AssetList
               collection="components"
               title="Components"
-              eyebrow="Catalog"
               subtitle="Reusable UI components discovered by AST analysis"
-              placeholder="Search components by name, path, prop…"
+              placeholder="Search components…"
             />
           }
         />
@@ -27,9 +27,8 @@ export default function App() {
             <AssetList
               collection="hooks"
               title="Hooks"
-              eyebrow="Catalog"
               subtitle="Custom React hooks and their signatures"
-              placeholder="Search hooks by name, path…"
+              placeholder="Search hooks…"
             />
           }
         />
@@ -39,9 +38,8 @@ export default function App() {
             <AssetList
               collection="utils"
               title="Utils"
-              eyebrow="Catalog"
-              subtitle="Utility functions, validators, formatters and constants"
-              placeholder="Search utilities by name, path…"
+              subtitle="Utility functions, formatters and constants"
+              placeholder="Search utils…"
             />
           }
         />
@@ -51,13 +49,13 @@ export default function App() {
             <AssetList
               collection="contexts"
               title="Contexts"
-              eyebrow="Catalog"
               subtitle="Contexts, providers and stores managing shared state"
-              placeholder="Search contexts/stores by name, path…"
+              placeholder="Search contexts…"
             />
           }
         />
         <Route path="routes" element={<RoutesView />} />
+        <Route path="dead-code" element={<DeadCode />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

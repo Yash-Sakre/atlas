@@ -14,7 +14,7 @@ const buttonVariants = cva(
       variant: {
         primary: 'bg-[var(--ink)] text-[var(--canvas)] hover:bg-[#ececec]',
         secondary:
-          'bg-[var(--surface-1)] text-[var(--ink)] border-[var(--hairline-soft)] hover:bg-[var(--surface-2)]',
+          'bg-[var(--surface-2)] text-[var(--ink)] hover:bg-[var(--surface-3)]',
         ghost: 'bg-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-1)]',
       },
       size: {

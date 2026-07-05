@@ -1,81 +1,104 @@
 import { NavLink, Outlet, useLocation, Link } from 'react-router-dom';
-import { FiSearch } from 'react-icons/fi';
-import { Button } from '@/components/ui/button';
+import {
+  FiGrid,
+  FiBox,
+  FiZap,
+  FiTool,
+  FiDatabase,
+  FiGitBranch,
+  FiAlertTriangle,
+} from 'react-icons/fi';
+import type { IconType } from 'react-icons';
+import AtlasMark from './components/AtlasMark';
+import { useData } from './data';
+import type { Stats } from './types';
 
-const NAV: Array<[string, string]> = [
-  ['/', 'Overview'],
-  ['/components', 'Components'],
-  ['/hooks', 'Hooks'],
-  ['/utils', 'Utils'],
-  ['/contexts', 'Contexts'],
-  ['/routes', 'Routes'],
+type NavItem = { to: string; label: string; icon: IconType; count?: keyof Stats };
+
+const NAV: NavItem[] = [
+  { to: '/', label: 'Overview', icon: FiGrid },
+  { to: '/components', label: 'Components', icon: FiBox, count: 'components' },
+  { to: '/hooks', label: 'Hooks', icon: FiZap, count: 'hooks' },
+  { to: '/utils', label: 'Utils', icon: FiTool, count: 'utils' },
+  { to: '/contexts', label: 'Contexts', icon: FiDatabase, count: 'contexts' },
+  { to: '/routes', label: 'Routes', icon: FiGitBranch, count: 'routes' },
+  { to: '/dead-code', label: 'Dead code', icon: FiAlertTriangle, count: 'unusedExports' },
 ];
 
-/** Routes that use the fixed-viewport app-shell (no page scroll, no footer). */
-const APP_SHELL = new Set(['/components', '/hooks', '/utils', '/contexts']);
+/** Routes that fill the viewport (no page scroll) — the master/detail browsers. */
+const FILL = new Set(['/components', '/hooks', '/utils', '/contexts', '/routes']);
 
-function Logo() {
-  return <FiSearch size={18} strokeWidth={2.2} aria-hidden="true" />;
+/** Last path segment, e.g. "/home/yash/Repo/chat-pdf" → "chat-pdf". */
+function folderName(p: string): string {
+  if (!p) return p;
+  const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/);
+  return parts[parts.length - 1] || p;
 }
 
 export default function Layout() {
   const { pathname } = useLocation();
-  const appShell = APP_SHELL.has(pathname);
+  const fill = FILL.has(pathname);
+  const data = useData();
+  const s = data.stats;
 
   return (
-    <div className={`atlas-body${appShell ? ' atlas-body--app' : ''}`}>
-      <header className="atlas-topnav">
-        <div className="atlas-topnav-inner">
-          <Link to="/" className="atlas-wordmark">
-            <span className="atlas-wordmark-glyph">
-              <Logo />
+    <div className="atlas-body atlas-shell">
+      <aside className="atlas-sidebar">
+        <Link to="/" className="atlas-brand">
+          <span className="atlas-brand-glyph">
+            <AtlasMark size={32} />
+          </span>
+          <span>
+            <span className="atlas-brand-name">Atlas</span>
+            <span className="atlas-brand-sub">Codebase map</span>
+          </span>
+        </Link>
+
+        <p className="atlas-nav-label">Browse</p>
+        <nav className="atlas-snav">
+          {NAV.map(({ to, label, icon: Icon, count }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) => `atlas-snav-link${isActive ? ' is-active' : ''}`}
+            >
+              <Icon size={16} strokeWidth={2} aria-hidden="true" />
+              <span>{label}</span>
+              {count != null && <span className="atlas-snav-count tnum">{s[count]}</span>}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="atlas-sidebar-spacer" />
+
+        <div className="atlas-sidebar-foot">
+          <div className="atlas-foot-row">
+            <span className="atlas-foot-key">Project</span>
+            <span className="atlas-foot-val atlas-trunc mono" title={data.meta.root}>
+              {folderName(data.meta.root)}
             </span>
-            <span>Atlas</span>
-          </Link>
-          <nav className="atlas-nav">
-            {NAV.map(([to, label]) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) => `atlas-nav-link${isActive ? ' is-active' : ''}`}
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="atlas-nav-cta">
-            <Button asChild variant="primary" size="sm">
-              <Link to="/">Overview</Link>
-            </Button>
+          </div>
+          <div className="atlas-foot-row">
+            <span className="atlas-foot-key">Files</span>
+            <span className="atlas-foot-val tnum">{s.fileCount}</span>
+          </div>
+          <div className="atlas-foot-row">
+            <span className="atlas-foot-key">Version</span>
+            <span className="atlas-foot-val mono">{data.meta.toolVersion}</span>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main className={`atlas-main${appShell ? ' atlas-main--app' : ''}`}>
-        <Outlet />
+      <main
+        className={`atlas-content${fill ? ' atlas-content--fill' : ''}${
+          pathname === '/' ? ' atlas-content--flush' : ''
+        }`}
+      >
+        <div className="atlas-view">
+          <Outlet />
+        </div>
       </main>
-
-      {!appShell && (
-        <footer className="atlas-footer">
-          <div className="atlas-footer-inner">
-            <div className="atlas-footer-brand">
-              <span className="atlas-wordmark-glyph">
-                <Logo />
-              </span>
-              <span>Atlas</span>
-            </div>
-            <nav className="atlas-footer-nav">
-              {NAV.map(([to, label]) => (
-                <Link key={to} to={to} className="atlas-foot-link">
-                  {label}
-                </Link>
-              ))}
-            </nav>
-            <p className="atlas-footer-meta">Auto-generated documentation &middot; React dashboard</p>
-          </div>
-        </footer>
-      )}
     </div>
   );
 }

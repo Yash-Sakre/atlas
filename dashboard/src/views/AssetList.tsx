@@ -20,13 +20,11 @@ const USAGE_TABS: Array<[Usage, string]> = [
 export default function AssetList({
   collection,
   title,
-  eyebrow,
   subtitle,
   placeholder,
 }: {
   collection: 'components' | 'hooks' | 'utils' | 'contexts';
   title: string;
-  eyebrow: string;
   subtitle: string;
   placeholder: string;
 }) {
@@ -37,6 +35,7 @@ export default function AssetList({
   const [usage, setUsage] = useState<Usage>('all');
   const [docsOnly, setDocsOnly] = useState(false);
   const [tag, setTag] = useState('');
+  const [showAllTags, setShowAllTags] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailRef = useRef<HTMLElement>(null);
 
@@ -62,10 +61,18 @@ export default function AssetList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, usage, docsOnly, tag, items]);
 
+  const hasFilters = Boolean(query || usage !== 'all' || docsOnly || tag);
+  function clearFilters() {
+    setQuery('');
+    setUsage('all');
+    setDocsOnly(false);
+    setTag('');
+  }
+
   // Auto-select the first item (wide screens) so the detail pane isn't empty.
   useEffect(() => {
     if (selectedId && items.some((i) => i.id === selectedId)) return;
-    const isNarrow = window.matchMedia('(max-width: 880px)').matches;
+    const isNarrow = window.matchMedia('(max-width: 900px)').matches;
     if (!isNarrow && list.length) setSelectedId(list[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection]);
@@ -74,47 +81,57 @@ export default function AssetList({
 
   function select(id: string) {
     setSelectedId(id);
-    if (window.matchMedia('(max-width: 880px)').matches) {
+    if (window.matchMedia('(max-width: 900px)').matches) {
       detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 
+  const visibleTags = showAllTags ? tags : tags.slice(0, 8);
+
   return (
     <>
-      <div className="mb-10">
-        <p className="atlas-eyebrow">{eyebrow}</p>
-        <h1 className="atlas-page-title">{title}</h1>
-        <p className="atlas-lead">{subtitle}</p>
+      <div className="atlas-pagehead">
+        <div className="atlas-pagehead-main">
+          <h1 className="atlas-pagehead-title">{title}</h1>
+          <p className="atlas-pagehead-sub">{subtitle}</p>
+        </div>
+        <div className="atlas-pagehead-side">
+          <span className="atlas-pill tnum">{items.length} total</span>
+        </div>
       </div>
 
       <div className="atlas-split">
         <aside className="atlas-side">
-          <div className="atlas-side-tools">
+          <div className="atlas-filterbar">
             <SearchField value={query} onChange={setQuery} placeholder={placeholder} />
 
-            <Tabs value={usage} onValueChange={(v) => setUsage(v as Usage)}>
-              <TabsList className="flex w-full">
-                {USAGE_TABS.map(([key, label]) => (
-                  <TabsTrigger key={key} value={key} className="flex-1">
-                    {label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <div className="atlas-filter-line">
+              <Tabs value={usage} onValueChange={(v) => setUsage(v as Usage)}>
+                <TabsList>
+                  {USAGE_TABS.map(([key, label]) => (
+                    <TabsTrigger key={key} value={key}>
+                      {label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              <span className="atlas-filter-count">
+                <b>{list.length}</b> / {items.length}
+              </span>
+            </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="atlas-filter-line">
               <ToggleGroup
                 type="multiple"
                 value={docsOnly ? ['documented'] : []}
                 onValueChange={(v) => setDocsOnly(v.includes('documented'))}
               >
-                <ToggleGroupItem value="documented" title="Only assets with a description">
-                  Documented
-                </ToggleGroupItem>
               </ToggleGroup>
-              <span className="atlas-faint" style={{ fontSize: 13 }}>
-                {list.length} / {items.length}
-              </span>
+              {hasFilters && (
+                <button type="button" className="atlas-filter-clear" onClick={clearFilters}>
+                  Clear
+                </button>
+              )}
             </div>
 
             {tags.length > 0 && (
@@ -122,22 +139,36 @@ export default function AssetList({
                 type="single"
                 value={tag}
                 onValueChange={setTag}
-                className="flex flex-wrap gap-1.5"
+                className="atlas-tagrow"
               >
-                {tags.slice(0, 12).map((t) => (
+                {visibleTags.map((t) => (
                   <ToggleGroupItem key={t} value={t}>
                     {t}
                   </ToggleGroupItem>
                 ))}
+                {tags.length > 8 && (
+                  <button
+                    type="button"
+                    className="atlas-filter-clear"
+                    style={{ alignSelf: 'center', paddingLeft: 2 }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowAllTags((v) => !v);
+                    }}
+                  >
+                    {showAllTags ? 'Less' : `+${tags.length - 8} more`}
+                  </button>
+                )}
               </ToggleGroup>
             )}
           </div>
 
           <div className="atlas-side-list">
             {list.length === 0 ? (
-              <p className="atlas-faint" style={{ textAlign: 'center', padding: '32px 0' }}>
-                No {title.toLowerCase()} found.
-              </p>
+              <div className="atlas-empty">
+                <FiInbox size={26} strokeWidth={1.6} />
+                <p>No {title.toLowerCase()} match your filters.</p>
+              </div>
             ) : (
               list.map((a) => (
                 <button
@@ -151,7 +182,7 @@ export default function AssetList({
                   </div>
                   <span className="mono atlas-row-path atlas-trunc">{a.path}</span>
                   <div className="atlas-row-meta">
-                    <span className="atlas-faint" style={{ fontSize: 11 }}>
+                    <span className="atlas-faint tnum" style={{ fontSize: 11 }}>
                       used {a.usageCount || 0}×
                     </span>
                     <SourceBadge source={a.description?.source} />
@@ -167,7 +198,7 @@ export default function AssetList({
             <Detail asset={selected} />
           ) : (
             <div className="atlas-detail-empty">
-              <FiInbox size={34} strokeWidth={1.5} />
+              <FiInbox size={32} strokeWidth={1.5} />
               <p>Select an asset to view its details</p>
             </div>
           )}

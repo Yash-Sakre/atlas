@@ -9,10 +9,10 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'rounded-full px-[9px] py-[3px] text-[11px] border border-[var(--hairline-soft)] bg-[var(--surface-2)] text-[var(--ink-muted)]',
+          'rounded-full px-[9px] py-[3px] text-[11px] bg-[var(--surface-2)] text-[var(--ink-muted)]',
         source:
-          'rounded-full px-[9px] py-[3px] text-[11px] border border-[var(--hairline-soft)] bg-[var(--surface-1)] text-[var(--ink-faint)] lowercase',
-        tag: 'rounded-[var(--r-sm)] px-[7px] py-[2px] text-[11px] font-normal font-mono border border-[var(--hairline-soft)] bg-[var(--surface-2)] text-[var(--ink-muted)]',
+          'rounded-full px-[9px] py-[3px] text-[11px] bg-[var(--surface-2)] text-[var(--ink-faint)] lowercase',
+        tag: 'rounded-[var(--r-sm)] px-[7px] py-[2px] text-[11px] font-normal font-mono bg-[var(--surface-2)] text-[var(--ink-muted)]',
       },
     },
     defaultVariants: { variant: 'default' },

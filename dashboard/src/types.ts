@@ -33,6 +33,13 @@ export interface Param {
   defaultValue?: string;
 }
 
+export interface SourceLocation {
+  /** Path relative to the analyzed project root. */
+  filePath: string;
+  line: number;
+  column?: number;
+}
+
 export interface UsageRef {
   filePath: string;
   line: number;
@@ -44,6 +51,8 @@ export interface Asset {
   name: string;
   type: AssetType;
   path: string;
+  /** Where the symbol is declared — used for "open in editor" deep links. */
+  location?: SourceLocation;
   usageCount?: number;
   description?: Description;
   signature?: string;
