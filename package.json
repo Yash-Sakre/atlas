@@ -48,7 +48,6 @@
     "fast-glob": "^3.3.2",
     "fuse.js": "^7.0.0",
     "picocolors": "^1.0.1",
-    "recharts": "^3.9.2",
     "ts-morph": "^23.0.0"
   },
   "devDependencies": {
