@@ -241,6 +241,42 @@ export interface ArchitectureInsights {
   violations: ArchitectureViolation[];
 }
 
+/* ----------------------------- Dependencies ------------------------------ */
+
+/** Which section of package.json a dependency was declared in. */
+export type DependencyKind = 'prod' | 'dev' | 'peer' | 'optional';
+
+/**
+ * Where a dependency actually resolves from, inferred from its version range.
+ * Only `registry` packages exist on npm — the rest (local `file:`/`link:` links
+ * such as yalc, `workspace:` protocol, git/url installs) have no npm page,
+ * version badge, or update to check.
+ */
+export type DependencySource = 'registry' | 'file' | 'git' | 'workspace' | 'url';
+
+/** A single third-party package declared in the project's package.json(s). */
+export interface DependencyInfo {
+  name: string;
+  /** Declared version range, e.g. "^12.1.0" or "file:.yalc/pkg". */
+  range: string;
+  /** Resolved installed version from node_modules, when present. */
+  installed?: string;
+  kind: DependencyKind;
+  /** How the package resolves — registry vs a local/git/url install. */
+  source: DependencySource;
+  /** How many source files import this package (bare-specifier imports). */
+  usedInCount: number;
+  /** Workspace package that declares it (monorepo); undefined = repo root. */
+  workspace?: string;
+  /** Canonical npmjs.com package page — only for registry packages. */
+  npmUrl?: string;
+}
+
+export interface DependencyReport {
+  dependencies: DependencyInfo[];
+  counts: { prod: number; dev: number; peer: number; optional: number; total: number };
+}
+
 /* -------------------------------- Search --------------------------------- */
 
 export interface SearchRecord {
@@ -262,6 +298,7 @@ export interface AnalysisStats {
   utils: number;
   contexts: number;
   routes: number;
+  dependencies: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
@@ -285,6 +322,7 @@ export interface AnalysisResult {
   graph: DependencyGraph;
   deadCode: DeadCodeReport;
   architecture: ArchitectureInsights;
+  dependencies: DependencyReport;
   search: SearchRecord[];
   stats: AnalysisStats;
 }

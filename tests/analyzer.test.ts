@@ -83,6 +83,24 @@ describe('runAnalysis (integration)', () => {
     expect(all.every((a) => a.description!.purpose.length > 0)).toBe(true);
   });
 
+  it('scans declared dependencies with kind + cross-file usage counts', () => {
+    const deps = result.dependencies.dependencies;
+    const byName = new Map(deps.map((d) => [d.name, d]));
+
+    // react/react-router-dom/zustand are prod deps; typescript is a devDep.
+    expect(byName.get('react')?.kind).toBe('prod');
+    expect(byName.get('typescript')?.kind).toBe('dev');
+
+    // usedInCount reflects bare-specifier imports across the fixture.
+    expect(byName.get('react')!.usedInCount).toBeGreaterThan(0);
+    // react-dom is declared but never imported in the fixture source.
+    expect(byName.get('react-dom')?.usedInCount).toBe(0);
+
+    expect(byName.get('react')?.npmUrl).toBe('https://www.npmjs.com/package/react');
+    expect(result.dependencies.counts.total).toBe(deps.length);
+    expect(result.stats.dependencies).toBe(deps.length);
+  });
+
   it('builds a non-empty graph and search index', () => {
     expect(result.graph.nodes.length).toBeGreaterThan(10);
     expect(result.graph.edges.length).toBeGreaterThan(0);

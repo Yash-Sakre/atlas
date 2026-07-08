@@ -66,14 +66,6 @@ export default function DeadCode() {
     return m;
   }, [data]);
 
-  /** Resolve a path + declaration line for an asset id (id is `<path>#<name>`). */
-  function locOf(id: string, fallbackPath?: string): { path: string; line?: number } {
-    const a = assetById.get(id);
-    if (a) return { path: a.path, line: a.location?.line };
-    const hash = id.lastIndexOf('#');
-    return { path: fallbackPath ?? (hash > 0 ? id.slice(0, hash) : id) };
-  }
-
   // ── Unused exports: search + type filter ──
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
@@ -114,7 +106,7 @@ export default function DeadCode() {
 
       {/* ── Unused exports ── */}
       {deadExports.length > 0 && (
-        <section className="atlas-panel atlas-deadsection">
+        <section className="atlas-panel atlas-deadsection atlas-deadsection--fill">
           <div className="atlas-panel-head">
             <h2 className="atlas-section-title">Unused exports</h2>
             <div className="atlas-deadhead-actions">
@@ -211,45 +203,6 @@ export default function DeadCode() {
         </section>
       )}
 
-      {/* ── Duplicate candidates ── */}
-      {duplicates.length > 0 && (
-        <section className="atlas-panel atlas-deadsection">
-          <div className="atlas-panel-head">
-            <h2 className="atlas-section-title">Duplicate candidates</h2>
-            <span className="atlas-panel-hint tnum">{duplicates.length}</span>
-          </div>
-          <p className="atlas-deadnote atlas-faint">
-            Symbols that look like the same thing declared in more than one place.
-          </p>
-          <div className="atlas-dupgrid">
-            {duplicates.map((d, i) => (
-              <div key={i} className="atlas-dupcard">
-                <div className="atlas-dupcard-head">
-                  <span className="mono atlas-dupcard-names">{d.names.join(', ')}</span>
-                  {typeof d.similarity === 'number' && (
-                    <span className="atlas-dupcard-sim tnum" title="Estimated similarity">
-                      {Math.round(d.similarity * 100)}%
-                    </span>
-                  )}
-                </div>
-                <p className="atlas-dupcard-reason atlas-faint">{d.reason}</p>
-                <ul className="atlas-dupcard-locs">
-                  {d.ids.map((id) => {
-                    const loc = locOf(id);
-                    return (
-                      <li key={id}>
-                        <EditorLink root={root} path={loc.path} line={loc.line} className="atlas-deadloc">
-                          <span className="mono atlas-trunc">{loc.path}</span>
-                        </EditorLink>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </>
   );
 }

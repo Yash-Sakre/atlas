@@ -5,6 +5,7 @@ import fg from 'fast-glob';
 import { Project, type SourceFile } from 'ts-morph';
 import type { ExtractionContext, FrameworkInfo, ResolvedConfig } from './types';
 import { detectFramework, detectWorkspaces, readDeps } from './config';
+import { readBuildAliases } from './aliases';
 
 export interface LoadedProject {
   project: Project;
@@ -40,6 +41,8 @@ export function loadProject(config: ResolvedConfig): LoadedProject {
       /* unreadable / parse error → skip */
     }
   }
+
+  applyBuildAliases(project, config.root);
 
   const framework = detectFramework(config.root);
   const workspaces = detectWorkspaces(config.root);
@@ -81,6 +84,25 @@ export function loadProject(config: ResolvedConfig): LoadedProject {
   };
 
   return { project, sourceFiles, ctx };
+}
+
+/**
+ * Merge path aliases declared in build configs (e.g. Vite `resolve.alias`) into
+ * the project's compiler `paths`, so `@/…` imports resolve even when they aren't
+ * mirrored in tsconfig. tsconfig's own `paths` take precedence on conflict — if
+ * an alias already resolves, we don't touch it. No-op when nothing is found.
+ */
+function applyBuildAliases(project: Project, root: string): void {
+  const discovered = readBuildAliases(root);
+  if (Object.keys(discovered).length === 0) return;
+
+  const opts = project.getCompilerOptions();
+  const merged = { ...discovered, ...(opts.paths ?? {}) }; // tsconfig wins
+  project.compilerOptions.set({
+    paths: merged,
+    // `paths` needs a base to resolve against; keep tsconfig's if set, else root.
+    baseUrl: opts.baseUrl ?? root,
+  });
 }
 
 function findTsConfig(root: string): string | undefined {

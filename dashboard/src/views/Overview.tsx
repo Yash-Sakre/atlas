@@ -27,6 +27,14 @@ const TYPE_HUE: Record<string, string> = {
   route: 'var(--t-route)',
 };
 
+/** Dependency-kind hue for the "Most imported" leaderboard dots. */
+const DEP_KIND_HUE: Record<string, string> = {
+  prod: 'var(--success)',
+  dev: 'var(--t-component)',
+  peer: 'var(--t-hook)',
+  optional: 'var(--t-hook)',
+};
+
 const PAGE_FOR: Record<string, string> = {
   component: '/components',
   hook: '/hooks',
@@ -135,6 +143,28 @@ export default function Overview() {
   }, [data.deadCode]);
 
   const issueTotal = warnings.reduce((a, w) => a + w.n, 0);
+
+  // Declared third-party packages (offline-derivable; the full view enriches
+  // each one live from the npm registry).
+  const deps = data.dependencies?.dependencies || [];
+  const depCounts = data.dependencies?.counts;
+  const depUnused = deps.filter((d) => (d.usedInCount || 0) === 0).length;
+  const depBreakdown = depCounts
+    ? [
+        { label: 'Production', n: depCounts.prod, hue: 'var(--success)' },
+        { label: 'Development', n: depCounts.dev, hue: 'var(--t-component)' },
+        { label: 'Peer / optional', n: depCounts.peer + depCounts.optional, hue: 'var(--t-hook)' },
+      ].filter((r) => r.n > 0)
+    : [];
+  const topDeps = useMemo(
+    () =>
+      [...deps]
+        .filter((d) => (d.usedInCount || 0) > 0)
+        .sort((a, b) => (b.usedInCount || 0) - (a.usedInCount || 0))
+        .slice(0, 6),
+    [deps],
+  );
+  const maxDepUse = topDeps[0]?.usedInCount || 1;
 
   return (
     <>
@@ -315,6 +345,90 @@ export default function Overview() {
             </div>
           </div>
         </div>
+
+        {/* Dependencies */}
+        {deps.length > 0 && (
+          <div className="atlas-bento-row atlas-bento-row--grow grid-cols-1 lg:grid-cols-[1fr_1.3fr]">
+            <div className="atlas-panel">
+              <div className="atlas-panel-head">
+                <h2 className="atlas-section-title">Dependencies</h2>
+                <Link to="/dependencies" className="atlas-panel-hint atlas-viewall">
+                  View all <FiArrowUpRight size={13} />
+                </Link>
+              </div>
+              <div className="atlas-reuse-headline">
+                <span className="atlas-reuse-pct">{depCounts?.total ?? deps.length}</span>
+                <span className="atlas-reuse-pct-label">
+                  packages declared{depUnused ? ` · ${depUnused} unused` : ''}
+                </span>
+              </div>
+              <div className="atlas-reuse-rows">
+                {depBreakdown.map((r) => {
+                  const total = depCounts?.total || 1;
+                  const w = Math.max(r.n ? 4 : 0, (r.n / total) * 100);
+                  return (
+                    <div key={r.label} className="atlas-reuse-row">
+                      <div className="atlas-reuse-line">
+                        <span className="atlas-legend-dot" style={{ background: r.hue }} />
+                        {r.label}
+                        <b>{r.n}</b>
+                      </div>
+                      <div className="atlas-reuse-track">
+                        <span style={{ width: `${w}%`, background: r.hue }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="atlas-panel">
+              <div className="atlas-panel-head">
+                <h2 className="atlas-section-title">Most imported</h2>
+                <span className="atlas-panel-hint">packages by files importing them</span>
+              </div>
+              {topDeps.length > 0 ? (
+                <div className="atlas-lead">
+                  {topDeps.map((d, i) => (
+                    <div key={d.name} className="atlas-lead-row">
+                      <span className="atlas-lead-rank">{i + 1}</span>
+                      <span className="atlas-legend-dot" style={{ background: DEP_KIND_HUE[d.kind] }} />
+                      <span className="atlas-lead-name">
+                        {d.npmUrl ? (
+                          <a
+                            href={d.npmUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="atlas-trunc mono"
+                            title={`${d.name} on npm`}
+                            style={{ textDecoration: 'none' }}
+                          >
+                            {d.name}
+                          </a>
+                        ) : (
+                          <span className="atlas-trunc mono" title={d.name}>{d.name}</span>
+                        )}
+                      </span>
+                      <span className="atlas-lead-bar">
+                        <span
+                          style={{
+                            width: `${Math.max(6, ((d.usedInCount || 0) / maxDepUse) * 100)}%`,
+                            background: DEP_KIND_HUE[d.kind] || 'var(--ink-faint)',
+                          }}
+                        />
+                      </span>
+                      <span className="atlas-lead-count">{d.usedInCount || 0}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="atlas-faint" style={{ fontSize: 13.5 }}>
+                  No declared packages are imported in the scanned source.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </>

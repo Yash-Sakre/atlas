@@ -4,6 +4,7 @@ import Overview from './views/Overview';
 import AssetList from './views/AssetList';
 import RoutesView from './views/RoutesView';
 import DeadCode from './views/DeadCode';
+import Dependencies from './views/Dependencies';
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
           }
         />
         <Route path="routes" element={<RoutesView />} />
+        <Route path="dependencies" element={<Dependencies />} />
         <Route path="dead-code" element={<DeadCode />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -24,6 +24,7 @@ import { analyzeUsage } from '../analysis/usageAnalyzer';
 import { buildGraph } from '../analysis/graphBuilder';
 import { analyzeDeadCode } from '../analysis/deadCode';
 import { analyzeArchitecture } from '../analysis/architecture';
+import { analyzeDependencies } from '../analysis/dependencies';
 import { describeAssets } from '../ai/describe';
 import { buildSearchIndex } from '../search/searchIndex';
 import { loadPlugins } from '../plugins/loader';
@@ -81,6 +82,9 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   phase('Analyzing architecture');
   const architecture = analyzeArchitecture(assets, config);
 
+  phase('Scanning dependencies');
+  const dependencies = analyzeDependencies(ctx, config);
+
   if (!hooks.skipDocs) {
     phase('Generating documentation');
     const undocumented = assets.filter((a) => !a.description);
@@ -107,6 +111,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
     graph,
     deadCode,
     architecture,
+    dependencies,
     search,
     stats: {
       fileCount: sourceFiles.length,
@@ -115,6 +120,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
       utils: utils.length,
       contexts: contexts.length,
       routes: routes.length,
+      dependencies: dependencies.counts.total,
       unusedExports: deadCode.deadExports.length,
       duplicateCandidates: deadCode.duplicateCandidates.length,
       durationMs: Date.now() - started,

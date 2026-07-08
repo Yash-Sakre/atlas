@@ -91,9 +91,29 @@ export interface Stats {
   utils: number;
   contexts: number;
   routes: number;
+  dependencies?: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
+}
+
+export type DependencyKind = 'prod' | 'dev' | 'peer' | 'optional';
+export type DependencySource = 'registry' | 'file' | 'git' | 'workspace' | 'url';
+
+export interface DependencyInfo {
+  name: string;
+  range: string;
+  installed?: string;
+  kind: DependencyKind;
+  source?: DependencySource;
+  usedInCount: number;
+  workspace?: string;
+  npmUrl?: string;
+}
+
+export interface DependencyReport {
+  dependencies: DependencyInfo[];
+  counts: { prod: number; dev: number; peer: number; optional: number; total: number };
 }
 
 export interface SearchRecord {
@@ -127,6 +147,7 @@ export interface AnalysisResult {
   routes: Asset[];
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
   deadCode: Record<string, unknown[]>;
+  dependencies?: DependencyReport;
   search: SearchRecord[];
   stats: Stats;
 }

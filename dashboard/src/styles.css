@@ -206,6 +206,32 @@ code, pre, .mono {
 .atlas-content--fill .atlas-side-list { flex: 1; min-height: 0; }
 .atlas-content--fill .atlas-detail { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 
+/* Table pages (Dependencies, Dead code) fill the viewport: page head, KPIs and
+   filters stay pinned; only the table body scrolls. */
+.atlas-content--sheet { overflow: hidden; }
+.atlas-content--sheet .atlas-view {
+  height: 100%; display: flex; flex-direction: column; min-height: 0;
+  padding-bottom: 28px;
+}
+/* Every section is a column so its filters stay put and its body absorbs scroll. */
+.atlas-content--sheet .atlas-deadsection {
+  display: flex; flex-direction: column; min-height: 0;
+}
+/* The primary section grows to fill leftover height; its table scrolls inside. */
+.atlas-content--sheet .atlas-deadsection--fill { flex: 1 1 auto; }
+.atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap,
+.atlas-content--sheet .atlas-deadsection--fill .atlas-empty { flex: 1 1 auto; min-height: 0; }
+.atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap {
+  overflow-y: auto; overscroll-behavior: contain;
+}
+/* Secondary sections (e.g. orphan files) keep natural height but can shrink and
+   scroll their list rather than pushing the page. */
+.atlas-content--sheet .atlas-deadfiles { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Keep column headers visible while the body scrolls. */
+.atlas-content--sheet .atlas-deadsection--fill thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface-1);
+}
+
 /* ------------------------------ Page head ----------------------------- */
 .atlas-pagehead {
   display: flex; align-items: flex-end; justify-content: space-between;
@@ -254,6 +280,8 @@ a.atlas-card, button.atlas-card { display: block; text-align: left; cursor: poin
   gap: 12px; margin-bottom: 18px;
 }
 .atlas-panel-hint { font-size: 12px; color: var(--ink-faint); }
+.atlas-viewall { display: inline-flex; align-items: center; gap: 3px; text-decoration: none; transition: color .12s ease; }
+.atlas-viewall:hover { color: var(--accent); }
 
 /* ------------------------------- KPI tiles ---------------------------- */
 .atlas-kpis {
@@ -517,18 +545,25 @@ a.atlas-kpi:hover .atlas-kpi-arrow {  transform: translate(0,0); color: var(--in
 }
 .atlas-desc-lead { color: var(--ink); line-height: 1.6; font-size: 14.5px; margin: 0; }
 
-/* Inputs / Outputs as an aligned definition grid */
+/* Inputs / Outputs stacked, each an aligned label + value row */
 .atlas-desc-io {
-  display: grid; grid-template-columns: auto 1fr; gap: 8px 16px;
+  display: flex; flex-direction: column; gap: 12px;
   margin: 18px 0 0; padding: 16px 0 0; border-top: 1px solid var(--hairline-soft);
   font-size: 13.5px;
+}
+.atlas-desc-io > div {
+  display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 16px;
+  align-items: start;
 }
 .atlas-desc-io dt {
   color: var(--ink-faint); font-weight: 500;
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
   padding-top: 2px;
 }
-.atlas-desc-io dd { margin: 0; color: var(--ink-muted); line-height: 1.5; }
+.atlas-desc-io dd {
+  margin: 0; color: var(--ink-muted); line-height: 1.5;
+  min-width: 0; overflow-wrap: anywhere;
+}
 
 /* When to use / not — bordered callouts instead of inline colored text */
 .atlas-notes { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
@@ -629,8 +664,9 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
   .atlas-nav-label, .atlas-sidebar-spacer, .atlas-sidebar-foot { display: none; }
   .atlas-snav { flex-direction: row; gap: 4px; }
   .atlas-snav-link { padding: 7px 10px; white-space: nowrap; }
-  .atlas-content, .atlas-content--fill { overflow: visible; height: auto; }
-  .atlas-content--fill .atlas-view { height: auto; }
+  .atlas-content, .atlas-content--fill, .atlas-content--sheet { overflow: visible; height: auto; }
+  .atlas-content--fill .atlas-view, .atlas-content--sheet .atlas-view { height: auto; }
+  .atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap { overflow-y: visible; }
   .atlas-content--fill .atlas-side-list { max-height: 420px; }
 }
 
@@ -726,3 +762,19 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
   transition: color .12s ease, background-color .12s ease;
 }
 .atlas-copybtn:hover { color: var(--ink); background: var(--surface-3); }
+
+/* ============================== Dependencies ======================== */
+.atlas-deptable td { vertical-align: top; }
+.atlas-deptable td:first-child { color: var(--ink); min-width: 200px; }
+.atlas-dep-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.atlas-dep-name .atlas-editorlink { font-weight: 500; font-size: 13.5px; }
+.atlas-dep-desc { font-size: 12px; margin: 3px 0 0; max-width: 460px; }
+.atlas-dep-update {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12.5px; color: var(--warn);
+  background: rgba(241, 178, 75, 0.12); border-radius: var(--r-pill); padding: 2px 8px;
+}
+.atlas-dep-latest { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--success); }
+.atlas-dep-links { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-faint); }
+.atlas-dep-links a { color: inherit; display: inline-flex; transition: color .12s ease; }
+.atlas-dep-links a:hover { color: var(--accent); }

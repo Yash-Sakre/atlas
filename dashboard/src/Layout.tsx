@@ -6,6 +6,7 @@ import {
   FiTool,
   FiDatabase,
   FiGitBranch,
+  FiPackage,
   FiAlertTriangle,
 } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
@@ -22,11 +23,15 @@ const NAV: NavItem[] = [
   { to: '/utils', label: 'Utils', icon: FiTool, count: 'utils' },
   { to: '/contexts', label: 'Contexts', icon: FiDatabase, count: 'contexts' },
   { to: '/routes', label: 'Routes', icon: FiGitBranch, count: 'routes' },
+  { to: '/dependencies', label: 'Dependencies', icon: FiPackage, count: 'dependencies' },
   { to: '/dead-code', label: 'Dead code', icon: FiAlertTriangle, count: 'unusedExports' },
 ];
 
 /** Routes that fill the viewport (no page scroll) — the master/detail browsers. */
 const FILL = new Set(['/components', '/hooks', '/utils', '/contexts', '/routes']);
+
+/** Table pages that fill the viewport — head/KPIs/filters pinned, table scrolls. */
+const SHEET = new Set(['/dependencies', '/dead-code']);
 
 /** Last path segment, e.g. "/home/yash/Repo/chat-pdf" → "chat-pdf". */
 function folderName(p: string): string {
@@ -38,6 +43,7 @@ function folderName(p: string): string {
 export default function Layout() {
   const { pathname } = useLocation();
   const fill = FILL.has(pathname);
+  const sheet = SHEET.has(pathname);
   const data = useData();
   const s = data.stats;
 
@@ -92,7 +98,7 @@ export default function Layout() {
 
       <main
         className={`atlas-content${fill ? ' atlas-content--fill' : ''}${
-          pathname === '/' ? ' atlas-content--flush' : ''
+          sheet ? ' atlas-content--sheet' : ''
         }`}
       >
         <div className="atlas-view">
