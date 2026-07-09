@@ -30,7 +30,9 @@ const NAV: NavItem[] = [
 /** Routes that fill the viewport (no page scroll) — the master/detail browsers. */
 const FILL = new Set(['/components', '/hooks', '/utils', '/contexts', '/routes']);
 
-/** Table pages that fill the viewport — head/KPIs/filters pinned, table scrolls. */
+/** Table pages that fill the viewport — head/filters pinned, the body scrolls.
+ *  Dead code shows one category at a time (tabbed), so a single body scrolls
+ *  rather than the whole page. */
 const SHEET = new Set(['/dependencies', '/dead-code']);
 
 /** Last path segment, e.g. "/home/yash/Repo/chat-pdf" → "chat-pdf". */

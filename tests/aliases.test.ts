@@ -82,3 +82,67 @@ describe('vite-alias resolution end-to-end', () => {
     expect(result.deadCode.unusedComponents.map((c) => c.name)).not.toContain('AddCameraDialog');
   }, 30_000);
 });
+
+/**
+ * Regression: aliases in split build configs (electron-forge's
+ * `vite.renderer.config.mts`, etc.) must be discovered, not just `vite.config.*`.
+ */
+describe('readBuildAliases (split vite config discovery)', () => {
+  it('discovers aliases declared in vite.renderer.config.mts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'atlas-split-'));
+    try {
+      writeFileSync(
+        join(root, 'vite.renderer.config.mts'),
+        `import path from 'path';\nexport default { resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } } };`,
+      );
+      expect(readBuildAliases(root)['@/*']).toEqual(['src/*']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+/**
+ * Regression (monorepo): when Atlas scans from the repo root, a `@/…` alias that
+ * lives only in a workspace's own tsconfig (one level down) must still resolve, so
+ * the workspace's components aren't falsely reported as unused / dead code.
+ */
+describe('monorepo workspace-alias resolution end-to-end', () => {
+  let root: string;
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'atlas-monorepo-'));
+    const ws = join(root, 'apps', 'desktop');
+    mkdirSync(join(ws, 'src', 'dialogs'), { recursive: true });
+    mkdirSync(join(ws, 'src', 'pages'), { recursive: true });
+    // Monorepo root: declares workspaces, hoists react, and has NO tsconfig at all.
+    writeFileSync(
+      join(root, 'package.json'),
+      JSON.stringify({ name: 'root', private: true, workspaces: ['apps/*'], dependencies: { react: '*' } }),
+    );
+    // The `@/*` alias lives ONLY in the workspace tsconfig, one level down.
+    writeFileSync(join(ws, 'package.json'), JSON.stringify({ name: 'desktop' }));
+    writeFileSync(
+      join(ws, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: { jsx: 'react-jsx', moduleResolution: 'bundler', baseUrl: '.', paths: { '@/*': ['./src/*'] } },
+        include: ['src'],
+      }),
+    );
+    writeFileSync(
+      join(ws, 'src', 'dialogs', 'AddCameraDialog.tsx'),
+      `export function AddCameraDialog() { return <div>dialog</div>; }`,
+    );
+    writeFileSync(
+      join(ws, 'src', 'pages', 'CamerasPage.tsx'),
+      `import { AddCameraDialog } from '@/dialogs/AddCameraDialog';\nexport function CamerasPage() { return <AddCameraDialog />; }`,
+    );
+  });
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+  it('resolves a workspace-local @/ alias when scanning from the monorepo root', async () => {
+    const result = await runAnalysis(loadConfig(root, { ai: 'none', noCache: true }), { skipDocs: true });
+    const dialog = result.components.find((c) => c.name === 'AddCameraDialog');
+    expect(dialog?.usageCount).toBeGreaterThan(0);
+    expect(result.deadCode.unusedComponents.map((c) => c.name)).not.toContain('AddCameraDialog');
+  }, 30_000);
+});

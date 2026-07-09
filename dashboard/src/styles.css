@@ -206,29 +206,22 @@ code, pre, .mono {
 .atlas-content--fill .atlas-side-list { flex: 1; min-height: 0; }
 .atlas-content--fill .atlas-detail { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
 
-/* Table pages (Dependencies, Dead code) fill the viewport: page head, KPIs and
-   filters stay pinned; only the table body scrolls. */
+/* Table pages (Dependencies, Dead code) fill the viewport: page head, tabs and
+   filters stay pinned; only the body scrolls. */
 .atlas-content--sheet { overflow: hidden; }
 .atlas-content--sheet .atlas-view {
   height: 100%; display: flex; flex-direction: column; min-height: 0;
   padding-bottom: 28px;
 }
-/* Every section is a column so its filters stay put and its body absorbs scroll. */
-.atlas-content--sheet .atlas-deadsection {
-  display: flex; flex-direction: column; min-height: 0;
+/* Dead code panel: tabs + toolbar pinned, one category body scrolls inside it. */
+.atlas-content--sheet .atlas-deadpanel {
+  flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
 }
-/* The primary section grows to fill leftover height; its table scrolls inside. */
-.atlas-content--sheet .atlas-deadsection--fill { flex: 1 1 auto; }
-.atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap,
-.atlas-content--sheet .atlas-deadsection--fill .atlas-empty { flex: 1 1 auto; min-height: 0; }
-.atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap {
-  overflow-y: auto; overscroll-behavior: contain;
+.atlas-content--sheet .atlas-deadbody {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
 }
-/* Secondary sections (e.g. orphan files) keep natural height but can shrink and
-   scroll their list rather than pushing the page. */
-.atlas-content--sheet .atlas-deadfiles { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-/* Keep column headers visible while the body scrolls. */
-.atlas-content--sheet .atlas-deadsection--fill thead th {
+/* Keep table column headers visible while the body scrolls. */
+.atlas-content--sheet .atlas-deadpanel thead th {
   position: sticky; top: 0; z-index: 1; background: var(--surface-1);
 }
 
@@ -666,7 +659,7 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
   .atlas-snav-link { padding: 7px 10px; white-space: nowrap; }
   .atlas-content, .atlas-content--fill, .atlas-content--sheet { overflow: visible; height: auto; }
   .atlas-content--fill .atlas-view, .atlas-content--sheet .atlas-view { height: auto; }
-  .atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap { overflow-y: visible; }
+  .atlas-content--sheet .atlas-deadbody { overflow-y: visible; }
   .atlas-content--fill .atlas-side-list { max-height: 420px; }
 }
 
@@ -720,11 +713,38 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
 
 /* ============================== Dead code =========================== */
 .atlas-deadsection { margin-bottom: 20px; }
-.atlas-deadnote { font-size: 13px; margin: -8px 0 16px; }
+.atlas-deadnote { font-size: 13px; margin: 0; }
 .atlas-deadhead-actions { display: inline-flex; align-items: center; gap: 12px; }
-.atlas-deadfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.atlas-deadfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .atlas-deadloc { color: var(--ink-muted); font-size: 12.5px; }
 .atlas-deadtable td:first-child { font-weight: 500; }
+
+/* Tabbed report: pinned tab bar + per-tab toolbar, then a scrolling body. */
+.atlas-deadtabs-head { margin-bottom: 14px; }
+.atlas-tabcount {
+  margin-left: 7px; font-size: 11px; color: var(--ink-faint);
+  background: var(--surface-2); border-radius: var(--r-pill); padding: 1px 7px;
+}
+[data-state='active'] .atlas-tabcount { color: var(--ink-muted); background: var(--surface-1); }
+.atlas-deadtoolbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px 16px; margin-bottom: 14px;
+}
+.atlas-filter-count { font-size: 12.5px; color: var(--ink-faint); white-space: nowrap; }
+.atlas-filter-count b { color: var(--ink-muted); font-weight: 600; }
+
+/* Duplicate candidates */
+.atlas-duprows { display: flex; flex-direction: column; }
+.atlas-duprow { padding: 12px 2px; border-bottom: 1px solid var(--hairline-soft); }
+.atlas-duprow:last-child { border-bottom: none; }
+.atlas-duprow-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.atlas-dupname { color: var(--ink); font-size: 13.5px; font-weight: 500; }
+.atlas-dupsim {
+  font-size: 10.5px; color: var(--warn); border-color: transparent;
+  background: rgba(241, 178, 75, 0.12);
+}
+.atlas-dupreason { font-size: 12px; }
+.atlas-dupfiles { display: flex; flex-direction: column; gap: 3px; margin: 7px 0 0 23px; }
 
 /* Orphan files */
 .atlas-deadfiles { display: flex; flex-direction: column; gap: 1px; }

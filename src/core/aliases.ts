@@ -11,29 +11,38 @@
  * is never executed) and turns them into tsconfig-style `paths` entries that we
  * feed into the ts-morph Project so alias imports resolve like everything else.
  */
-import { existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { relative } from 'path';
 import { Node, Project, SyntaxKind, type ObjectLiteralExpression } from 'ts-morph';
 
-const VITE_CONFIGS = ['vite.config.ts', 'vite.config.js', 'vite.config.mjs', 'vite.config.mts', 'vite.config.cts', 'vite.config.cjs'];
+// Matches `vite.config.ts` as well as split configs such as
+// `vite.renderer.config.mts` / `vite.main.config.js` (electron-forge, etc.).
+const VITE_CONFIG_RE = /^vite(\.[\w-]+)?\.config\.(c|m)?[jt]s$/;
 
 /**
  * Discover build-tool path aliases under `root` and return them as tsconfig-style
  * `paths` entries (relative to `root`, which callers should use as `baseUrl`).
- * Returns an empty object when nothing is found.
+ * Every matching vite config in the directory is parsed and merged (the first
+ * config to declare a given alias wins). Returns an empty object when nothing is
+ * found.
  */
 export function readBuildAliases(root: string): Record<string, string[]> {
   const paths: Record<string, string[]> = {};
 
-  for (const name of VITE_CONFIGS) {
+  let entries: string[];
+  try {
+    entries = readdirSync(root).filter((f) => VITE_CONFIG_RE.test(f));
+  } catch {
+    return paths; // directory unreadable / missing
+  }
+
+  for (const name of entries) {
     const abs = joinRoot(root, name);
-    if (!existsSync(abs)) continue;
     try {
       collectViteAliases(abs, root, paths);
     } catch {
       /* unparseable config → skip, best-effort only */
     }
-    break; // one vite config per project
   }
 
   return paths;

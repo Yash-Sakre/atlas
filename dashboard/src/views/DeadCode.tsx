@@ -1,15 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-  FiCheck,
-  FiCheckCircle,
-  FiCopy,
-  FiFile,
-  FiInbox,
-} from 'react-icons/fi';
+import { FiCheckCircle, FiCopy, FiFile, FiInbox } from 'react-icons/fi';
 import { useData } from '../data';
 import type { Asset, AssetType } from '../types';
 import { EditorLink, SearchField, TypeBadge, useFuzzy } from '../ui';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /** Mirrors the analyzer's dead-code report (loosely — every field optional). */
 interface DeadItem {
@@ -32,13 +27,12 @@ interface DeadCodeData {
 
 const TYPE_ORDER: AssetType[] = ['component', 'hook', 'utility', 'context', 'store', 'provider'];
 
-async function copyLines(lines: string[]): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(lines.join('\n'));
-    return true;
-  } catch {
-    return false;
-  }
+type TabKey = 'exports' | 'orphans' | 'duplicates';
+
+/** The file path portion of an asset id like `apps/x/foo.ts#main`. */
+function idPath(id: string): string {
+  const hash = id.indexOf('#');
+  return hash === -1 ? id : id.slice(0, hash);
 }
 
 export default function DeadCode() {
@@ -66,22 +60,50 @@ export default function DeadCode() {
     return m;
   }, [data]);
 
+  // ── Which category tabs actually have items ──
+  const tabs = useMemo(
+    () =>
+      (
+        [
+          { key: 'exports', label: 'Unused exports', count: deadExports.length },
+          { key: 'orphans', label: 'Orphan files', count: orphanFiles.length },
+          { key: 'duplicates', label: 'Duplicates', count: duplicates.length },
+        ] as { key: TabKey; label: string; count: number }[]
+      ).filter((t) => t.count > 0),
+    [deadExports.length, orphanFiles.length, duplicates.length],
+  );
+
+  const [tab, setTab] = useState<TabKey>(() => tabs[0]?.key ?? 'exports');
+  const active = tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key ?? 'exports';
+
   // ── Unused exports: search + type filter ──
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
-  const fuzzy = useFuzzy(deadExports, ['name', 'path']);
-
+  const fuzzyExports = useFuzzy(deadExports, ['name', 'path']);
   const typesPresent = useMemo(
     () => TYPE_ORDER.filter((t) => deadExports.some((d) => d.type === t)),
     [deadExports],
   );
-
   const unusedList = useMemo(() => {
-    let base = fuzzy(query);
+    let base = fuzzyExports(query);
     if (typeFilter.length) base = base.filter((d) => typeFilter.includes(d.type));
     return [...base].sort((a, b) => a.name.localeCompare(b.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, typeFilter, deadExports]);
+
+  // ── Duplicates: search over names + file paths ──
+  const [dupQuery, setDupQuery] = useState('');
+  const dupIndexed = useMemo(
+    () =>
+      duplicates.map((d) => ({
+        ...d,
+        _names: d.names.join(' '),
+        _paths: d.ids.map(idPath).join(' '),
+      })),
+    [duplicates],
+  );
+  const fuzzyDupes = useFuzzy(dupIndexed, ['_names', '_paths']);
+  const dupList = useMemo(() => fuzzyDupes(dupQuery), [dupQuery, fuzzyDupes]);
 
   if (total === 0) {
     return (
@@ -104,106 +126,184 @@ export default function DeadCode() {
     <>
       <Head total={total} />
 
-      {/* ── Unused exports ── */}
-      {deadExports.length > 0 && (
-        <section className="atlas-panel atlas-deadsection atlas-deadsection--fill">
-          <div className="atlas-panel-head">
-            <h2 className="atlas-section-title">Unused exports</h2>
-            <div className="atlas-deadhead-actions">
-              <span className="atlas-panel-hint tnum">
-                {unusedList.length} / {deadExports.length}
-              </span>
-            </div>
-          </div>
-          <p className="atlas-deadnote atlas-faint">
-            Exported but never imported anywhere in the project.
-          </p>
-
-          <div className="atlas-deadfilters">
-            <SearchField value={query} onChange={setQuery} placeholder="Search unused exports…" />
-            {typesPresent.length > 1 && (
-              <ToggleGroup
-                type="multiple"
-                value={typeFilter}
-                onValueChange={setTypeFilter}
-                className="flex flex-wrap gap-1.5"
-              >
-                {typesPresent.map((t) => (
-                  <ToggleGroupItem key={t} value={t} title={`Show only ${t}`}>
-                    {t}
-                  </ToggleGroupItem>
+      <section className="atlas-panel atlas-deadpanel">
+        <div className="atlas-panel-head atlas-deadtabs-head">
+          {tabs.length > 1 ? (
+            <Tabs value={active} onValueChange={(v) => setTab(v as TabKey)}>
+              <TabsList>
+                {tabs.map((t) => (
+                  <TabsTrigger key={t.key} value={t.key}>
+                    {t.label}
+                    <span className="atlas-tabcount tnum">{t.count}</span>
+                  </TabsTrigger>
                 ))}
-              </ToggleGroup>
-            )}
-          </div>
-
-          {unusedList.length === 0 ? (
-            <div className="atlas-empty">
-              <FiInbox size={24} strokeWidth={1.6} />
-              <p>No unused exports match your filters.</p>
-            </div>
+              </TabsList>
+            </Tabs>
           ) : (
-            <div className="atlas-table-wrap">
-              <table className="atlas-table atlas-deadtable">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unusedList.map((d) => (
-                    <tr key={d.id}>
-                      <td className="mono">{d.name}</td>
-                      <td>
-                        <TypeBadge type={d.type} />
-                      </td>
-                      <td>
-                        <EditorLink
-                          root={root}
-                          path={d.path}
-                          line={assetById.get(d.id)?.location?.line}
-                          className="atlas-deadloc"
-                        >
-                          <span className="mono atlas-trunc">{d.path}</span>
-                        </EditorLink>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <h2 className="atlas-section-title">{tabs[0]?.label}</h2>
           )}
-        </section>
-      )}
+        </div>
 
-      {/* ── Orphan files ── */}
-      {orphanFiles.length > 0 && (
-        <section className="atlas-panel atlas-deadsection">
-          <div className="atlas-panel-head">
-            <h2 className="atlas-section-title">Orphan files</h2>
-            <div className="atlas-deadhead-actions">
-              <span className="atlas-panel-hint tnum">{orphanFiles.length}</span>
+        {/* ── Unused exports ── */}
+        {active === 'exports' && (
+          <>
+            <div className="atlas-deadtoolbar">
+              <p className="atlas-deadnote atlas-faint">
+                Exported but never imported anywhere in the project.
+              </p>
+              <div className="atlas-deadfilters">
+                <SearchField value={query} onChange={setQuery} placeholder="Search unused exports…" />
+                {typesPresent.length > 1 && (
+                  <ToggleGroup
+                    type="multiple"
+                    value={typeFilter}
+                    onValueChange={setTypeFilter}
+                    className="flex flex-wrap gap-1.5"
+                  >
+                    {typesPresent.map((t) => (
+                      <ToggleGroupItem key={t} value={t} title={`Show only ${t}`}>
+                        {t}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                )}
+                <span className="atlas-filter-count">
+                  <b>{unusedList.length}</b> / {deadExports.length}
+                </span>
+              </div>
             </div>
-          </div>
-          <p className="atlas-deadnote atlas-faint">
-            Files where every export is unused — safe-to-delete candidates.
-          </p>
-          <ul className="atlas-deadfiles">
-            {orphanFiles.map((f) => (
-              <li key={f} className="atlas-deadfile">
-                <FiFile className="atlas-deadfile-icon" aria-hidden="true" />
-                <EditorLink root={root} path={f} className="atlas-deadloc">
-                  <span className="mono atlas-trunc">{f}</span>
-                </EditorLink>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
+            {unusedList.length === 0 ? (
+              <Empty label="No unused exports match your filters." />
+            ) : (
+              <div className="atlas-deadbody">
+                <table className="atlas-table atlas-deadtable">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unusedList.map((d) => (
+                      <tr key={d.id}>
+                        <td className="mono">{d.name}</td>
+                        <td>
+                          <TypeBadge type={d.type} />
+                        </td>
+                        <td>
+                          <EditorLink
+                            root={root}
+                            path={d.path}
+                            line={assetById.get(d.id)?.location?.line}
+                            className="atlas-deadloc"
+                          >
+                            <span className="mono atlas-trunc">{d.path}</span>
+                          </EditorLink>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Orphan files ── */}
+        {active === 'orphans' && (
+          <>
+            <div className="atlas-deadtoolbar">
+              <p className="atlas-deadnote atlas-faint">
+                Files where every export is unused — safe-to-delete candidates.
+              </p>
+            </div>
+            <div className="atlas-deadbody">
+              <ul className="atlas-deadfiles">
+                {orphanFiles.map((f) => (
+                  <li key={f} className="atlas-deadfile">
+                    <FiFile className="atlas-deadfile-icon" aria-hidden="true" />
+                    <EditorLink root={root} path={f} className="atlas-deadloc">
+                      <span className="mono atlas-trunc">{f}</span>
+                    </EditorLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {/* ── Duplicate candidates ── */}
+        {active === 'duplicates' && (
+          <>
+            <div className="atlas-deadtoolbar">
+              <p className="atlas-deadnote atlas-faint">
+                Same name (or near-identical body) declared in more than one file — possible
+                consolidation targets.
+              </p>
+              <div className="atlas-deadfilters">
+                <SearchField
+                  value={dupQuery}
+                  onChange={setDupQuery}
+                  placeholder="Search duplicates…"
+                />
+                <span className="atlas-filter-count">
+                  <b>{dupList.length}</b> / {duplicates.length}
+                </span>
+              </div>
+            </div>
+
+            {dupList.length === 0 ? (
+              <Empty label="No duplicates match your search." />
+            ) : (
+              <div className="atlas-deadbody">
+                <ul className="atlas-duprows">
+                  {dupList.map((d) => (
+                    <li key={d.ids.join('|')} className="atlas-duprow">
+                      <div className="atlas-duprow-head">
+                        <FiCopy className="atlas-deadfile-icon" aria-hidden="true" />
+                        <span className="mono atlas-dupname">{d.names.join(', ')}</span>
+                        {d.similarity >= 0.999 ? (
+                          <span className="atlas-pill atlas-dupsim">exact</span>
+                        ) : (
+                          <span className="atlas-pill atlas-dupsim tnum">
+                            {Math.round(d.similarity * 100)}% match
+                          </span>
+                        )}
+                        <span className="atlas-dupreason atlas-faint">{d.reason}</span>
+                      </div>
+                      <div className="atlas-dupfiles">
+                        {d.ids.map((id) => (
+                          <EditorLink
+                            key={id}
+                            root={root}
+                            path={idPath(id)}
+                            line={assetById.get(id)?.location?.line}
+                            className="atlas-deadloc"
+                          >
+                            <span className="mono atlas-trunc">{idPath(id)}</span>
+                          </EditorLink>
+                        ))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </>
+  );
+}
+
+function Empty({ label }: { label: string }) {
+  return (
+    <div className="atlas-empty atlas-deadbody">
+      <FiInbox size={24} strokeWidth={1.6} />
+      <p>{label}</p>
+    </div>
   );
 }
 
@@ -227,26 +327,5 @@ function Head({ total }: { total: number }) {
         </span>
       </div>
     </div>
-  );
-}
-
-function CopyButton({ lines, title }: { lines: string[]; title: string }) {
-  const [done, setDone] = useState(false);
-  if (!lines.length) return null;
-  return (
-    <button
-      type="button"
-      className="atlas-copybtn"
-      title={title}
-      onClick={async () => {
-        if (await copyLines(lines)) {
-          setDone(true);
-          window.setTimeout(() => setDone(false), 1400);
-        }
-      }}
-    >
-      {done ? <FiCheck size={13} /> : <FiCopy size={13} />}
-      {done ? 'Copied' : 'Copy'}
-    </button>
   );
 }
