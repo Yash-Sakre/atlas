@@ -25,6 +25,8 @@ import { buildGraph } from '../analysis/graphBuilder';
 import { analyzeDeadCode } from '../analysis/deadCode';
 import { analyzeArchitecture } from '../analysis/architecture';
 import { analyzeDependencies } from '../analysis/dependencies';
+import { analyzeDesignSystem } from '../analysis/designSystem';
+import { renderDesignMarkdown } from '../analysis/designMarkdown';
 import { describeAssets } from '../ai/describe';
 import { buildSearchIndex } from '../search/searchIndex';
 import { loadPlugins } from '../plugins/loader';
@@ -85,6 +87,18 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   phase('Scanning dependencies');
   const dependencies = analyzeDependencies(ctx, config);
 
+  phase('Extracting design system');
+  const generatedAt = new Date(started).toISOString();
+  const design = analyzeDesignSystem(config);
+  const designSystem = {
+    ...design,
+    markdown: renderDesignMarkdown(design, {
+      projectName: projectNameOf(config.root),
+      toolVersion: toolVersion(),
+      generatedAt,
+    }),
+  };
+
   if (!hooks.skipDocs) {
     phase('Generating documentation');
     const undocumented = assets.filter((a) => !a.description);
@@ -97,7 +111,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
 
   const result: AnalysisResult = {
     meta: {
-      generatedAt: new Date(started).toISOString(),
+      generatedAt,
       toolVersion: toolVersion(),
       root: config.root,
       framework: ctx.framework,
@@ -112,6 +126,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
     deadCode,
     architecture,
     dependencies,
+    designSystem,
     search,
     stats: {
       fileCount: sourceFiles.length,
@@ -121,6 +136,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
       contexts: contexts.length,
       routes: routes.length,
       dependencies: dependencies.counts.total,
+      designTokens: designSystem.counts.total,
       unusedExports: deadCode.deadExports.length,
       duplicateCandidates: deadCode.duplicateCandidates.length,
       durationMs: Date.now() - started,
@@ -219,6 +235,12 @@ function resolveDefaultExports(assets: Asset[], ctx: ExtractionContextLike): voi
       }
     }
   }
+}
+
+/** Last path segment of the analyzed root, e.g. "/home/x/my-app" → "my-app". */
+function projectNameOf(root: string): string {
+  const parts = root.replace(/[\\/]+$/, '').split(/[\\/]/);
+  return parts[parts.length - 1] || root;
 }
 
 function toolVersion(): string {

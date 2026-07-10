@@ -28,7 +28,15 @@ export function writeJsonOutputs(result: AnalysisResult, root: string, outDir: s
   write('dead-code.json', result.deadCode);
   write('architecture.json', result.architecture);
   write('dependencies.json', result.dependencies);
+  write('design-system.json', result.designSystem);
   write('search.json', result.search);
+
+  // The design system also ships as a standalone DESIGN.md document.
+  if (result.designSystem?.markdown) {
+    const mdPath = join(dir, 'DESIGN.md');
+    writeFileSync(mdPath, result.designSystem.markdown, 'utf8');
+    files.push(mdPath);
+  }
   write('analysis.json', result); // full snapshot, used by `docs`/`graph`/`search` commands
 
   return { dir, files };

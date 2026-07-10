@@ -277,6 +277,74 @@ export interface DependencyReport {
   counts: { prod: number; dev: number; peer: number; optional: number; total: number };
 }
 
+/* ----------------------------- Design system ----------------------------- */
+
+/** Semantic bucket a design token belongs to (classified by name + value). */
+export type TokenCategory =
+  | 'color'
+  | 'gradient'
+  | 'font'
+  | 'font-size'
+  | 'font-weight'
+  | 'spacing'
+  | 'radius'
+  | 'shadow'
+  | 'motion'
+  | 'z-index'
+  | 'breakpoint'
+  | 'other';
+
+/** A single design token (CSS custom property or Tailwind theme entry). */
+export interface DesignToken {
+  /** Token name as authored, e.g. "--accent" or "colors.brand.500". */
+  name: string;
+  /** Value in the base (default) theme. */
+  value: string;
+  category: TokenCategory;
+  /** Stylesheet/config file (relative to root) that declares it. */
+  source: string;
+  /** Per-theme override values keyed by theme name (base value in `value`). */
+  themeValues?: Record<string, string>;
+}
+
+/** A theme scope discovered in the stylesheets (`:root`, `.dark`, …). */
+export interface ThemeInfo {
+  /** Normalized name: "base", "dark", "light" or a custom data-theme value. */
+  name: string;
+  /** The selector (or media query) that scopes the theme. */
+  selector: string;
+  tokenCount: number;
+}
+
+export interface FontInfo {
+  /** Primary family name, e.g. "Inter". */
+  family: string;
+  /** Full font stack as authored. */
+  stack: string;
+  role: 'sans' | 'serif' | 'mono';
+  source: string;
+}
+
+export interface DesignSystemReport {
+  tokens: DesignToken[];
+  themes: ThemeInfo[];
+  fonts: FontInfo[];
+  /** Most-used literal colors in the stylesheets (supplement when few tokens exist). */
+  literalColors: { value: string; count: number }[];
+  /** Stylesheets/configs that contributed tokens (relative paths). */
+  sources: string[];
+  counts: {
+    colors: number;
+    fonts: number;
+    spacing: number;
+    radii: number;
+    shadows: number;
+    total: number;
+  };
+  /** The rendered DESIGN.md document. */
+  markdown: string;
+}
+
 /* -------------------------------- Search --------------------------------- */
 
 export interface SearchRecord {
@@ -299,6 +367,7 @@ export interface AnalysisStats {
   contexts: number;
   routes: number;
   dependencies: number;
+  designTokens: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
@@ -323,6 +392,7 @@ export interface AnalysisResult {
   deadCode: DeadCodeReport;
   architecture: ArchitectureInsights;
   dependencies: DependencyReport;
+  designSystem: DesignSystemReport;
   search: SearchRecord[];
   stats: AnalysisStats;
 }

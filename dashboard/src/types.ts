@@ -92,6 +92,7 @@ export interface Stats {
   contexts: number;
   routes: number;
   dependencies?: number;
+  designTokens?: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
@@ -114,6 +115,52 @@ export interface DependencyInfo {
 export interface DependencyReport {
   dependencies: DependencyInfo[];
   counts: { prod: number; dev: number; peer: number; optional: number; total: number };
+}
+
+export type TokenCategory =
+  | 'color'
+  | 'gradient'
+  | 'font'
+  | 'font-size'
+  | 'font-weight'
+  | 'spacing'
+  | 'radius'
+  | 'shadow'
+  | 'motion'
+  | 'z-index'
+  | 'breakpoint'
+  | 'other';
+
+export interface DesignToken {
+  name: string;
+  value: string;
+  category: TokenCategory;
+  source?: string;
+  /** Per-theme override values keyed by theme name (base value in `value`). */
+  themeValues?: Record<string, string>;
+}
+
+export interface ThemeInfo {
+  name: string;
+  selector: string;
+  tokenCount: number;
+}
+
+export interface FontInfo {
+  family: string;
+  stack: string;
+  role?: 'sans' | 'serif' | 'mono';
+  source?: string;
+}
+
+export interface DesignSystemReport {
+  tokens: DesignToken[];
+  themes: ThemeInfo[];
+  fonts: FontInfo[];
+  literalColors: { value: string; count: number }[];
+  sources: string[];
+  counts: { colors: number; fonts: number; spacing: number; radii: number; shadows: number; total: number };
+  markdown: string;
 }
 
 export interface SearchRecord {
@@ -148,6 +195,7 @@ export interface AnalysisResult {
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
   deadCode: Record<string, unknown[]>;
   dependencies?: DependencyReport;
+  designSystem?: DesignSystemReport;
   search: SearchRecord[];
   stats: Stats;
 }

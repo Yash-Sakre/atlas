@@ -6,6 +6,7 @@ import {
   FiTool,
   FiDatabase,
   FiGitBranch,
+  FiDroplet,
   FiPackage,
   FiAlertTriangle,
 } from 'react-icons/fi';
@@ -23,6 +24,7 @@ const NAV: NavItem[] = [
   { to: '/utils', label: 'Utils', icon: FiTool, count: 'utils' },
   { to: '/contexts', label: 'Contexts', icon: FiDatabase, count: 'contexts' },
   { to: '/routes', label: 'Routes', icon: FiGitBranch, count: 'routes' },
+  { to: '/design', label: 'Design', icon: FiDroplet, count: 'designTokens' },
   { to: '/dependencies', label: 'Dependencies', icon: FiPackage, count: 'dependencies' },
   { to: '/dead-code', label: 'Dead code', icon: FiAlertTriangle, count: 'unusedExports' },
 ];

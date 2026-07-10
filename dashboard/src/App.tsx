@@ -5,6 +5,8 @@ import AssetList from './views/AssetList';
 import RoutesView from './views/RoutesView';
 import DeadCode from './views/DeadCode';
 import Dependencies from './views/Dependencies';
+import DesignSystem from './views/DesignSystem';
+import DesignPreview from './views/DesignPreview';
 
 export default function App() {
   return (
@@ -56,6 +58,8 @@ export default function App() {
           }
         />
         <Route path="routes" element={<RoutesView />} />
+        <Route path="design" element={<DesignSystem />} />
+        <Route path="design/preview" element={<DesignPreview />} />
         <Route path="dependencies" element={<Dependencies />} />
         <Route path="dead-code" element={<DeadCode />} />
         <Route path="*" element={<Navigate to="/" replace />} />
