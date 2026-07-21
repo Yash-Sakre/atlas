@@ -37,7 +37,7 @@ export const COMMANDS: Command[] = [
     signature: 'atlas serve [root] [options]',
     tagline: 'Analyze and open the interactive dashboard.',
     description:
-      'The fastest way to explore a codebase. Atlas runs the full AST analysis (reusing the cache when it can), then starts a local server and opens the React dashboard — search, asset detail, props and params, usage locations, and the live dependency graph.',
+      'The fastest way to explore a codebase. Atlas runs the full AST analysis (reusing the cache when it can), then starts a local server and opens the React dashboard — search, asset detail, props and params, usage locations, the dependency graph and your npm inventory.',
     options: [
       { flag: '-r, --root <dir>', desc: 'Project root to analyze (or pass it positionally).', default: 'cwd' },
       { flag: '-p, --port <n>', desc: 'Preferred port; Atlas falls back to the next free one.', default: '4321' },
@@ -56,7 +56,7 @@ export const COMMANDS: Command[] = [
     signature: 'atlas analyze [root] [options]',
     tagline: 'Scan the project and write JSON analysis output.',
     description:
-      'Runs the AST pipeline and writes the structured analysis (assets, usage, graph, dead-code) to the output directory as JSON. Use it in CI, to diff results over time, or to feed other tools — nothing is served and nothing opens.',
+      'Runs the AST pipeline and writes the structured analysis to the output directory: assets, usage, graph, dead-code, architecture and the npm dependency inventory. Use it in CI, to diff results over time, or to feed other tools — nothing is served and nothing opens.',
     options: [
       ...COMMON_OPTIONS,
       { flag: '--no-cache', desc: 'Disable the incremental cache and analyze every file fresh.' },
@@ -68,7 +68,7 @@ export const COMMANDS: Command[] = [
     ],
   },
   {
-    id: 'serve-export',
+    id: 'export',
     name: 'atlas export',
     signature: 'atlas export [root] [options]',
     tagline: 'Write a hostable static dashboard bundle.',

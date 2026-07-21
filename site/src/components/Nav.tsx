@@ -11,6 +11,7 @@ export default function Nav() {
         </Link>
         <div className="nav-links">
           <Link className="hide-sm" to={{ pathname: '/', hash: '#showcase' }}>Showcase</Link>
+          <Link className="hide-sm" to={{ pathname: '/', hash: '#dashboard' }}>Dashboard</Link>
           <Link className="hide-sm" to={{ pathname: '/', hash: '#ai' }}>AI</Link>
           <NavLink className="hide-sm" to="/docs">Docs</NavLink>
           <GitHubButton label="★ GitHub" />
