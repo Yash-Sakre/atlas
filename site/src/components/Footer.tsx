@@ -1,6 +1,19 @@
 import { Link } from 'react-router-dom';
 import AtlasMark from './AtlasMark';
 import { GITHUB_URL, DOCS_REPO_URL, NPM_URL, ISSUES_URL, LICENSE_URL } from '../data/site';
+import { useVisitorCount } from '../hooks/useVisitorCount';
+
+/** Renders nothing until the count resolves, and nothing at all if it fails. */
+function VisitorCount() {
+  const count = useVisitorCount();
+  if (count === null) return <span className="visitors is-empty" aria-hidden />;
+  return (
+    <span className="visitors">
+      <span className="visitors-dot" />
+      <b>{count.toLocaleString('en-US')}</b> visitors
+    </span>
+  );
+}
 
 export default function Footer() {
   return (
@@ -16,7 +29,7 @@ export default function Footer() {
           <div className="foot-col">
             <h4>Product</h4>
             <Link to={{ pathname: '/', hash: '#showcase' }}>Showcase</Link>
-            <Link to={{ pathname: '/', hash: '#ai' }}>AI</Link>
+            <Link to={{ pathname: '/', hash: '#dashboard' }}>Dashboard</Link>
             <Link to="/docs">Docs</Link>
           </div>
           <div className="foot-col">
@@ -34,7 +47,8 @@ export default function Footer() {
         </div>
         <div className="foot-bottom">
           <span>© 2026 Atlas · MIT License</span>
-          <span>Built for developers who hate rebuilding the same button.</span>
+          <span className="hide-sm">Built for developers who hate rebuilding the same button.</span>
+          <VisitorCount />
         </div>
       </div>
     </footer>

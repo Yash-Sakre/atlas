@@ -4,6 +4,7 @@ import GitHubButton from '../components/GitHubButton';
 import Terminal from '../components/Terminal';
 import { INSTALL_CMD } from '../data/site';
 import { COMMANDS } from '../data/commands';
+import { DASHBOARD_VIEWS, OUTPUT_FILES } from '../data/features';
 
 export default function Landing() {
   return (
@@ -18,8 +19,9 @@ export default function Landing() {
           </h1>
           <p className="sub">
             One scan maps every reusable asset across your React / Next.js / Vite / TypeScript codebase —
-            components, hooks, utilities, contexts, stores &amp; routes. Detected by <b>AST semantics</b>,
-            never by folder names.
+            components, hooks, utilities, contexts, stores &amp; routes — plus your{' '}
+            <b>npm inventory</b>, <b>architecture</b> and the code nothing uses any more. Detected by{' '}
+            <b>AST semantics</b>, never by folder names.
           </p>
           <div className="actions">
             <CommandBox command={INSTALL_CMD} />
@@ -81,7 +83,7 @@ store    cartStore      → zustand · create()`}
             <div className="tile t-2 spotlight sp-violet">
               <div className="ico">🗺️</div>
               <h3>Interactive dashboard</h3>
-              <p>Search, asset detail, props / params, and usage locations — served at a local link.</p>
+              <p>Seven views over one scan — search, asset detail, routes, graph, dependencies, dead code.</p>
             </div>
             <div className="tile t-2">
               <div className="ico">🔗</div>
@@ -98,22 +100,99 @@ store    cartStore      → zustand · create()`}
               <h3>Dead-code &amp; duplicates</h3>
               <p>
                 <span className="stat">3</span>{' '}
-                <span style={{ color: 'var(--muted)' }}>unused exports · 2 orphans · dup candidates flagged.</span>
+                <span style={{ color: 'var(--ink-muted)' }}>unused exports · 2 orphans · dup candidates flagged.</span>
+              </p>
+            </div>
+
+            <div className="tile t-4 t-wide-sm spotlight sp-magenta">
+              <span className="tag-new">New</span>
+              <div className="ico">📦</div>
+              <h3>Every dependency, accounted for</h3>
+              <p>
+                Each package you declare, with the version actually installed, how many files import it, and
+                a live update check against the registry. Local <code>file:</code>, <code>workspace:</code>{' '}
+                and git installs are labelled as such instead of being guessed at — so “is this still used?”
+                and “what's behind?” are one screen, not an afternoon.
+              </p>
+            </div>
+
+            <div className="tile t-2">
+              <div className="ico">🏛️</div>
+              <h3>Architecture insights</h3>
+              <p>
+                Module boundaries, the shared layer, and the cross-imports that violate them — each with a
+                concrete recommendation.
               </p>
             </div>
             <div className="tile t-3 t-wide-sm">
-              <div className="ico">📦</div>
+              <div className="ico">🗂️</div>
               <h3>Monorepo aware</h3>
-              <p>npm / yarn / pnpm workspaces, Turborepo &amp; Nx auto-detected. Routers resolve per workspace.</p>
+              <p>
+                npm / yarn / pnpm workspaces, Turborepo &amp; Nx auto-detected. Path aliases resolve per
+                workspace, including split <code>tsconfig</code> setups.
+              </p>
             </div>
             <div className="tile t-3 t-wide-sm">
               <div className="ico">🫧</div>
-              <h3>Zero footprint</h3>
+              <h3>Self-contained</h3>
               <p>
-                Caches under <code>~/.atlas/</code> — nothing is written into your repo. Run{' '}
+                Everything lands in one gitignorable <code>.atlas/</code> folder. Run{' '}
                 <code>atlas export</code> for a static bundle to host anywhere.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* dashboard tour */}
+      <section id="dashboard">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow">The dashboard</span>
+            <h2>Seven views. One scan. No config.</h2>
+            <p className="lead">
+              <code>atlas serve</code> analyzes the project and opens a local React app. Every view reads the
+              same snapshot, so nothing is ever stale relative to anything else.
+            </p>
+          </div>
+          <div className="views">
+            {DASHBOARD_VIEWS.map((v) => (
+              <div className="view" key={v.id}>
+                <span className="view-ico">{v.icon}</span>
+                <div>
+                  <h3>
+                    {v.name}
+                    {v.isNew && <span className="tag-new inline">New</span>}
+                  </h3>
+                  <p>{v.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* outputs */}
+      <section id="outputs">
+        <div className="wrap">
+          <div className="sec-head">
+            <span className="eyebrow">Outputs</span>
+            <h2>Structured data, not just a pretty page.</h2>
+            <p className="lead">
+              Every run writes a plain-JSON snapshot to <code>.atlas/</code>. Diff it in CI, gate a pipeline
+              on it, or feed it to your own tooling.{' '}
+              <Link to="/docs/outputs" className="accent">
+                See the full output reference →
+              </Link>
+            </p>
+          </div>
+          <div className="files">
+            {OUTPUT_FILES.map((f) => (
+              <div className="file" key={f.file}>
+                <code className={f.isNew ? 'is-new' : ''}>{f.file}</code>
+                <span>{f.desc}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -168,12 +247,12 @@ store    cartStore      → zustand · create()`}
             <h2>One command. The whole toolbox.</h2>
             <p className="lead">
               Point Atlas at any project and it analyzes, caches, and serves — no setup, nothing committed.
-              See the <Link to="/docs" className="accent">full command reference →</Link>
+              See the <Link to="/docs/cli/serve" className="accent">full command reference →</Link>
             </p>
           </div>
           <div className="qs">
             {COMMANDS.map((c) => (
-              <Link to="/docs" key={c.id} className="qs-item">
+              <Link to={`/docs/cli/${c.id}`} key={c.id} className="qs-item">
                 <span className="n">{c.name}</span>
                 <p>{c.tagline}</p>
               </Link>
