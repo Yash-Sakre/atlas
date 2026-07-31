@@ -27,7 +27,7 @@ src/
 │  ├─ project.ts     # loads files into a ts-morph Project (the ExtractionContext)
 │  └─ analyzer.ts    # the orchestrator — runs the whole pipeline
 ├─ extractors/       # AST → assets (component, hook, util, context/store, route)
-├─ analysis/         # usage resolution · module refs · dependency graph · dead-code · architecture
+├─ analysis/         # usage resolution · module refs · dependency graph · dead-code · architecture · static assets
 ├─ ai/               # offline heuristic describer + coding-agent hand-off
 ├─ search/           # Fuse.js search index builder
 ├─ serve/            # static server · cache paths · cached-result loader
@@ -54,14 +54,15 @@ load project
           → build dependency graph
             → detect dead code (unused exports, orphan files, duplicates)
               → analyze architecture (layers, cross-package coupling)
+                → scan dependencies + static assets (images, fonts, media on disk)
                 → generate documentation (offline heuristic, or agent-supplied)
                   → build search index (Fuse.js)
                     → plugins enrich the final result
 ```
 
 The function returns one `AnalysisResult` containing `components`, `hooks`,
-`utils`, `contexts`, `routes`, `graph`, `deadCode`, `architecture`, `search`,
-`meta`, and `stats`.
+`utils`, `contexts`, `routes`, `graph`, `deadCode`, `architecture`,
+`dependencies`, `staticAssets`, `search`, `meta`, and `stats`.
 
 ### 1. Load project — `core/project.ts`
 Globs source files (config `include` / `exclude`) and loads them into a single
@@ -107,6 +108,15 @@ and land in the dead-code report.
 - `graphBuilder.ts` — builds the dependency graph from resolved dependencies.
 - `deadCode.ts` — flags unused exports, orphan files, and duplicate candidates.
 - `architecture.ts` — derives layers and surfaces cross-package coupling.
+
+### 7b. Static assets — `analysis/staticAssets.ts`
+Globs the project for images, vectors, fonts, media and PDFs, then records each
+one's path, size, mtime and — for images — the intrinsic dimensions read from the
+file header (a few KB; the image is never decoded). References are matched from
+the string literals of every source file plus the `url()`/attribute values of the
+project's stylesheets and markup, so bundler imports, `public/` URLs and CSS
+`url()`s all count. Files are never copied or inlined: only the path is stored,
+and `serve` streams the original on request (see `/__file/` below).
 
 ### 8. Documentation — `ai/`
 Every asset gets a structured description (purpose, responsibilities,
@@ -173,6 +183,12 @@ There are two paths, and **neither writes into the scanned project**:
   `dashboard/dist` and exposes the live analysis JSON at `/data.json` (with an SPA
   fallback to `index.html` for hash routing). If the preferred port is busy it
   falls back to an OS-assigned free port. Best-effort opens the browser.
+  It also streams the project's own static files under `/__file/<relative-path>`,
+  which is how the dashboard's Assets section previews real images and fonts
+  without anything being copied out of the codebase. Three gates apply: the
+  server must have been given a project root, the path must be one the scan
+  discovered (an allow-list built from the result), and it must still resolve
+  inside the root after normalization — so no other file is readable.
 - **`export`** (`cli/commands/exportSite.ts`): copies the prebuilt dashboard to an
   **external** folder and writes a static `data.json` next to it. Refuses to write
   inside the scanned project.

@@ -34,7 +34,15 @@ export async function serveCommand(flags: ServeFlags): Promise<void> {
       port = parsed;
     }
   }
-  const srv = await startServer({ distDir: dashboardDistDir(), getData: () => dataStr, port });
+  const srv = await startServer({
+    distDir: dashboardDistDir(),
+    getData: () => dataStr,
+    port,
+    // Lets the Assets view preview real files from the codebase, read from
+    // their path on request — nothing is copied out of the project.
+    projectRoot: config.root,
+    servableFiles: result.staticAssets?.assets.map((a) => a.path) ?? [],
+  });
 
   logger.newline();
   logger.success('Dashboard running at', pc.cyan(srv.url));

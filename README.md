@@ -98,6 +98,7 @@ atlas search authentication
 | **Utilities** | Any other top-level function. Classified as validator / formatter / helper, with purity + async inference. |
 | **Contexts & state** | `createContext`, `<X.Provider>`, Zustand `create`, Redux `createSlice`, Jotai/Recoil `atom` — detected by **call + import origin**, with state shape. |
 | **Routes** | React Router (`<Route>` / `createBrowserRouter` incl. nested + `lazy`), TanStack Router (`createFileRoute` / `createRoute` / `createRootRoute`), Next.js App Router (`page`/`layout`/`route`), and Pages Router — mapped to URL paths. Framework is detected **per workspace**, so routers nested under `apps/*` in a monorepo resolve correctly. |
+| **Static assets** | Images, vectors, fonts, video/audio and PDFs on disk — with size, intrinsic dimensions (read from the file header), the URL `public/`/`static/` files are served at, and every reference to them found in code, stylesheets and markup. |
 
 Usage is resolved through **every import syntax** — static `import`, barrels and
 re-exports, `await import()`, `React.lazy` / `next/dynamic` loaders, `require()`,
@@ -125,6 +126,8 @@ when to use, when *not* to use, examples, and potential improvements.
 ├─ graph.json
 ├─ dead-code.json
 ├─ architecture.json
+├─ dependencies.json
+├─ static-assets.json
 └─ search.json
 ```
 
@@ -133,8 +136,14 @@ under `~/.atlas/cache/<project-hash>/` and render it with the React
 dashboard:
 
 ```
-Overview · Components · Hooks · Utils · Contexts · Routes · Dependency Tree (ReactFlow)
+Overview · Components · Hooks · Utils · Contexts · Routes · Assets · Dependencies · Dead code
 ```
+
+The **Assets** section previews every static file from **its path on disk** — the
+local server streams the original file on request, so nothing is copied out of
+your project, inlined into the data payload, or written to a temp folder. (A
+hosted `export` has no filesystem behind it, so previews there fall back to
+typed placeholders.)
 
 Each asset follows this shape:
 

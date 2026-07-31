@@ -41,6 +41,7 @@ export async function analyzeCommand(flags: AnalyzeFlags): Promise<void> {
   logger.success('Utils Found', result.stats.utils);
   logger.success('Contexts/Stores Found', result.stats.contexts);
   logger.success('Routes Found', result.stats.routes);
+  logger.success('Static Assets Found', result.stats.staticAssets);
   logger.newline();
 
   // Warnings.

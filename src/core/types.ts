@@ -277,6 +277,58 @@ export interface DependencyReport {
   counts: { prod: number; dev: number; peer: number; optional: number; total: number };
 }
 
+/* ----------------------------- Static assets ------------------------------ */
+
+/** Broad category of a static (non-code) file, derived from its extension. */
+export type StaticAssetKind = 'image' | 'vector' | 'font' | 'video' | 'audio' | 'document';
+
+/**
+ * A static file the app ships: an image, icon, font, media clip or document.
+ *
+ * Atlas never copies these anywhere — it records the path on disk and the
+ * dashboard loads each file from that path through the local server.
+ */
+export interface StaticAsset {
+  /** Stable identity — the root-relative path (unique per file). */
+  id: string;
+  /** File name including extension, e.g. "hero.png". */
+  name: string;
+  /** Path relative to the project root, POSIX separators. */
+  path: string;
+  /** Lowercased extension without the dot, e.g. "png". */
+  ext: string;
+  kind: StaticAssetKind;
+  /** Size on disk, in bytes. */
+  size: number;
+  /** Last modification time (ISO 8601). */
+  modified: string;
+  /** Intrinsic pixel size, when readable from the file header. */
+  dimensions?: { width: number; height: number };
+  /**
+   * Lives under a framework `public/`/`static/` dir, i.e. it is served verbatim
+   * rather than going through the bundler.
+   */
+  isPublic: boolean;
+  /** URL the file is served at in the app — only for `public/`/`static/` files. */
+  publicUrl?: string;
+  /** Source/style/markup files that reference this file. */
+  usedIn: UsageReference[];
+  usageCount: number;
+  workspace?: string;
+}
+
+export interface StaticAssetReport {
+  assets: StaticAsset[];
+  counts: {
+    total: number;
+    /** How many are never referenced from code, styles or markup. */
+    unused: number;
+    /** Combined size on disk, in bytes. */
+    totalBytes: number;
+    byKind: Record<StaticAssetKind, number>;
+  };
+}
+
 /* -------------------------------- Search --------------------------------- */
 
 export interface SearchRecord {
@@ -299,6 +351,7 @@ export interface AnalysisStats {
   contexts: number;
   routes: number;
   dependencies: number;
+  staticAssets: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
@@ -323,6 +376,7 @@ export interface AnalysisResult {
   deadCode: DeadCodeReport;
   architecture: ArchitectureInsights;
   dependencies: DependencyReport;
+  staticAssets: StaticAssetReport;
   search: SearchRecord[];
   stats: AnalysisStats;
 }

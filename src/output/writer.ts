@@ -28,6 +28,7 @@ export function writeJsonOutputs(result: AnalysisResult, root: string, outDir: s
   write('dead-code.json', result.deadCode);
   write('architecture.json', result.architecture);
   write('dependencies.json', result.dependencies);
+  write('static-assets.json', result.staticAssets);
   write('search.json', result.search);
   write('analysis.json', result); // full snapshot, used by `docs`/`graph`/`search` commands
 

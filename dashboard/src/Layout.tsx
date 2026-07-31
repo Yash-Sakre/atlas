@@ -7,6 +7,7 @@ import {
   FiDatabase,
   FiGitBranch,
   FiPackage,
+  FiImage,
   FiAlertTriangle,
 } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
@@ -23,6 +24,7 @@ const NAV: NavItem[] = [
   { to: '/utils', label: 'Utils', icon: FiTool, count: 'utils' },
   { to: '/contexts', label: 'Contexts', icon: FiDatabase, count: 'contexts' },
   { to: '/routes', label: 'Routes', icon: FiGitBranch, count: 'routes' },
+  { to: '/assets', label: 'Assets', icon: FiImage, count: 'staticAssets' },
   { to: '/dependencies', label: 'Dependencies', icon: FiPackage, count: 'dependencies' },
   { to: '/dead-code', label: 'Dead code', icon: FiAlertTriangle, count: 'unusedExports' },
 ];
@@ -33,7 +35,7 @@ const FILL = new Set(['/components', '/hooks', '/utils', '/contexts', '/routes']
 /** Table pages that fill the viewport — head/filters pinned, the body scrolls.
  *  Dead code shows one category at a time (tabbed), so a single body scrolls
  *  rather than the whole page. */
-const SHEET = new Set(['/dependencies', '/dead-code']);
+const SHEET = new Set(['/dependencies', '/dead-code', '/assets']);
 
 /** Last path segment, e.g. "/home/yash/Repo/chat-pdf" → "chat-pdf". */
 function folderName(p: string): string {

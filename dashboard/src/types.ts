@@ -92,6 +92,7 @@ export interface Stats {
   contexts: number;
   routes: number;
   dependencies?: number;
+  staticAssets?: number;
   unusedExports: number;
   duplicateCandidates: number;
   durationMs: number;
@@ -114,6 +115,35 @@ export interface DependencyInfo {
 export interface DependencyReport {
   dependencies: DependencyInfo[];
   counts: { prod: number; dev: number; peer: number; optional: number; total: number };
+}
+
+export type StaticAssetKind = 'image' | 'vector' | 'font' | 'video' | 'audio' | 'document';
+
+/** A static file on disk. Previews load from `path`; nothing is ever inlined. */
+export interface StaticAsset {
+  id: string;
+  name: string;
+  path: string;
+  ext: string;
+  kind: StaticAssetKind;
+  size: number;
+  modified?: string;
+  dimensions?: { width: number; height: number };
+  isPublic?: boolean;
+  publicUrl?: string;
+  usedIn?: UsageRef[];
+  usageCount?: number;
+  workspace?: string;
+}
+
+export interface StaticAssetReport {
+  assets: StaticAsset[];
+  counts: {
+    total: number;
+    unused: number;
+    totalBytes: number;
+    byKind: Partial<Record<StaticAssetKind, number>>;
+  };
 }
 
 export interface SearchRecord {
@@ -148,6 +178,7 @@ export interface AnalysisResult {
   graph: { nodes: GraphNode[]; edges: GraphEdge[] };
   deadCode: Record<string, unknown[]>;
   dependencies?: DependencyReport;
+  staticAssets?: StaticAssetReport;
   search: SearchRecord[];
   stats: Stats;
 }

@@ -798,3 +798,109 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
 .atlas-dep-links { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-faint); }
 .atlas-dep-links a { color: inherit; display: inline-flex; transition: color .12s ease; }
 .atlas-dep-links a:hover { color: var(--accent); }
+
+/* ============================== Static assets ======================== */
+/* Six tiles instead of the standard five — declared after the base rules so it
+   wins, hence its own breakpoints. */
+.atlas-kpis--six { grid-template-columns: repeat(6, minmax(0,1fr)); }
+@media (max-width: 1320px) { .atlas-kpis--six { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 620px)  { .atlas-kpis--six { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+/* Filters pinned, the tile grid scrolls inside the panel. */
+.atlas-assetpanel { display: flex; flex-direction: column; min-height: 0; }
+.atlas-content--sheet .atlas-assetpanel { flex: 1 1 auto; }
+.atlas-assetpanel .atlas-deadfilters { margin-bottom: 18px; }
+.atlas-assetscroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0 -4px; padding: 0 4px 4px;
+}
+
+.atlas-assetgrid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px;
+}
+.atlas-assetcard {
+  position: relative; display: flex; flex-direction: column; gap: 10px;
+  padding: 10px; text-align: left; cursor: pointer;
+  background: var(--surface-2); border-radius: var(--r-lg);
+  transition: background-color .12s ease, transform .12s ease;
+}
+.atlas-assetcard:hover { background: var(--surface-3); transform: translateY(-1px); }
+.atlas-assetcard:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
+
+/* Checkerboard so transparent artwork reads as transparent, not as the surface. */
+.atlas-assetthumb {
+  display: flex; align-items: center; justify-content: center;
+  aspect-ratio: 4 / 3; border-radius: var(--r-md); overflow: hidden;
+  background-color: #100f0e;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.035) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.035) 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+.atlas-assetimg { max-width: 100%; max-height: 100%; object-fit: contain; }
+.atlas-assetglyph {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.atlas-assetglyph .mono { font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; }
+.atlas-assetfont { font-size: 42px; line-height: 1; color: var(--ink); }
+
+.atlas-assetinfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.atlas-assetname { font-size: 12.5px; color: var(--ink); }
+.atlas-assetsub { font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.atlas-assetflag {
+  position: absolute; top: 16px; right: 16px;
+  font-size: 10px; color: var(--warn); background: rgba(241, 178, 75, 0.16);
+  border-radius: var(--r-pill); padding: 2px 7px; backdrop-filter: blur(3px);
+}
+
+/* ---- Lightbox ---- */
+.atlas-lightbox {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 4vh 4vw;
+  background: rgba(6, 5, 5, 0.72); backdrop-filter: blur(4px);
+}
+.atlas-lightbox-panel {
+  display: flex; flex-direction: column; min-height: 0;
+  width: min(920px, 100%); max-height: 92vh;
+  background: var(--surface-1); border-radius: var(--r-bento);
+  box-shadow: 0 24px 70px -20px rgba(0,0,0,0.8);
+  overflow: hidden;
+}
+.atlas-lightbox-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 16px 14px 20px; border-bottom: 1px solid var(--hairline-soft);
+}
+.atlas-lightbox-title { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13.5px; color: var(--ink); }
+.atlas-lightbox-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; font-size: 12.5px; }
+.atlas-lightbox-close {
+  display: inline-flex; color: var(--ink-faint); cursor: pointer; transition: color .12s ease;
+}
+.atlas-lightbox-close:hover { color: var(--ink); }
+
+.atlas-lightbox-stage {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 180px; max-height: 46vh; padding: 20px;
+  background-color: #0e0d0c;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%),
+    linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 9px 9px;
+}
+.atlas-lightbox-stage img,
+.atlas-lightbox-stage video { max-width: 100%; max-height: calc(46vh - 40px); object-fit: contain; }
+.atlas-lightbox-fallback { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.atlas-lightbox-fallback p { font-size: 12.5px; margin: 0; max-width: 420px; }
+.atlas-lightbox-fontstage .atlas-assetfont { font-size: 40px; text-align: center; word-break: break-word; }
+.atlas-lightbox-audio { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.atlas-lightbox-audio audio { width: min(420px, 70vw); }
+
+.atlas-lightbox-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 18px 20px 22px; }
+.atlas-lightbox-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px 20px; margin: 0 0 20px;
+}
+.atlas-lightbox-meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); }
+.atlas-lightbox-meta dd { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-muted); word-break: break-all; }
+.atlas-lightbox-refs .atlas-usagelist { max-height: 240px; overflow-y: auto; }

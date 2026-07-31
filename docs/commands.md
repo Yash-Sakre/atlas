@@ -99,6 +99,7 @@ Outputs:
 ├─ components.json   ├─ contexts.json   ├─ graph.json
 ├─ hooks.json        ├─ routes.json     ├─ dead-code.json
 ├─ utils.json        ├─ architecture.json
+├─ dependencies.json ├─ static-assets.json
 └─ search.json
 ```
 
