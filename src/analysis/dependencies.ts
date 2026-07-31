@@ -19,6 +19,7 @@ import type {
   ResolvedConfig,
 } from '../core/types';
 import { detectWorkspaces } from '../core/config';
+import { collectModuleSpecifiers } from './moduleRefs';
 
 /** package.json section → our normalized kind, in precedence order (prod wins). */
 const KIND_SECTIONS: Array<{ section: string; kind: DependencyKind }> = [
@@ -50,18 +51,15 @@ function packageOf(spec: string): string | undefined {
   return parts[0];
 }
 
-/** Count how many source files import each bare package (import + re-export). */
+/**
+ * Count how many source files reference each bare package, in any syntax:
+ * static import, re-export, `await import()`, `require()`.
+ */
 function countImportsByPackage(sourceFiles: SourceFile[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const file of sourceFiles) {
     const seen = new Set<string>();
-    const specs: string[] = [];
-    for (const imp of file.getImportDeclarations()) specs.push(imp.getModuleSpecifierValue());
-    for (const exp of file.getExportDeclarations()) {
-      const v = exp.getModuleSpecifierValue();
-      if (v) specs.push(v);
-    }
-    for (const spec of specs) {
+    for (const spec of collectModuleSpecifiers(file)) {
       const pkg = packageOf(spec);
       if (pkg) seen.add(pkg);
     }

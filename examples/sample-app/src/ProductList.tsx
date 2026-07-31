@@ -25,8 +25,17 @@ export function ProductList({ products }: { products: Product[] }) {
 
   const grouped = groupBy(products, (p) => p.category);
 
+  // Export tooling is heavy and rarely used — pull it in on demand.
+  const exportCsv = async () => {
+    const { toCsv, downloadCsv } = await import('./report-export');
+    downloadCsv('products.csv', toCsv(products.map((p) => ({ name: p.name, price: p.price }))));
+  };
+
   return (
     <div>
+      <Button variant="secondary" size="sm" onClick={exportCsv}>
+        Export CSV
+      </Button>
       {Object.entries(grouped).map(([category, items]) => (
         <section key={category}>
           <Badge label={category} tone="info" />

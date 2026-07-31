@@ -99,6 +99,10 @@ atlas search authentication
 | **Contexts & state** | `createContext`, `<X.Provider>`, Zustand `create`, Redux `createSlice`, Jotai/Recoil `atom` — detected by **call + import origin**, with state shape. |
 | **Routes** | React Router (`<Route>` / `createBrowserRouter` incl. nested + `lazy`), TanStack Router (`createFileRoute` / `createRoute` / `createRootRoute`), Next.js App Router (`page`/`layout`/`route`), and Pages Router — mapped to URL paths. Framework is detected **per workspace**, so routers nested under `apps/*` in a monorepo resolve correctly. |
 
+Usage is resolved through **every import syntax** — static `import`, barrels and
+re-exports, `await import()`, `React.lazy` / `next/dynamic` loaders, `require()`,
+and `import x = require()` — so code-split modules aren't mistaken for dead code.
+
 For every asset it also computes **usage count**, **import/usage locations**,
 **dependencies**, **dead-code/orphan/duplicate** status, and a structured
 **description**: purpose, responsibilities, inputs, outputs,

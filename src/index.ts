@@ -33,7 +33,7 @@ function boostHeapIfNeeded(): boolean {
 
 if (!boostHeapIfNeeded()) {
   // Deferred require so the heavy module graph never loads in the launcher process.
-  import('./cli')
+  import('./cli/index.js')
     .then(({ buildCli }) => buildCli().parseAsync(process.argv))
     .catch((err) => {
       // eslint-disable-next-line no-console

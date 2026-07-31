@@ -27,7 +27,7 @@ src/
 │  ├─ project.ts     # loads files into a ts-morph Project (the ExtractionContext)
 │  └─ analyzer.ts    # the orchestrator — runs the whole pipeline
 ├─ extractors/       # AST → assets (component, hook, util, context/store, route)
-├─ analysis/         # usage resolution · dependency graph · dead-code · architecture
+├─ analysis/         # usage resolution · module refs · dependency graph · dead-code · architecture
 ├─ ai/               # offline heuristic describer + coding-agent hand-off
 ├─ search/           # Fuse.js search index builder
 ├─ serve/            # static server · cache paths · cached-result loader
@@ -96,6 +96,12 @@ Marks assets exported via a detached `export default X` / `export { X as default
 ### 4. Usage analysis — `analysis/usageAnalyzer.ts`
 Walks the project to compute, for each asset: usage count, the exact import/usage
 locations, and which other assets it depends on.
+
+Bindings come from every import syntax, not just static `import` statements —
+`analysis/moduleRefs.ts` additionally resolves `await import()`, `import().then()`,
+`React.lazy` / `next/dynamic` loaders, `require()`, `import x = require()`, and
+type-position `import('…').T`. Without this, code-split modules bind to nothing
+and land in the dead-code report.
 
 ### 5–7. Graph, dead code, architecture
 - `graphBuilder.ts` — builds the dependency graph from resolved dependencies.
