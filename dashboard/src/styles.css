@@ -224,6 +224,16 @@ code, pre, .mono {
 .atlas-content--sheet .atlas-deadpanel thead th {
   position: sticky; top: 0; z-index: 1; background: var(--surface-1);
 }
+/* Dependencies panel: search + filters pinned, the table scrolls inside it. */
+.atlas-deadsection--fill { display: flex; flex-direction: column; min-height: 0; }
+.atlas-deadsection--fill .atlas-deadfilters { margin-bottom: 18px; }
+.atlas-content--sheet .atlas-deadsection--fill { flex: 1 1 auto; margin-bottom: 0; }
+.atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+}
+.atlas-content--sheet .atlas-deadsection--fill thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface-1);
+}
 
 /* ------------------------------ Page head ----------------------------- */
 .atlas-pagehead {
@@ -660,6 +670,7 @@ mark { background: var(--accent-soft); color: #fff; border-radius: 2px; padding:
   .atlas-content, .atlas-content--fill, .atlas-content--sheet { overflow: visible; height: auto; }
   .atlas-content--fill .atlas-view, .atlas-content--sheet .atlas-view { height: auto; }
   .atlas-content--sheet .atlas-deadbody { overflow-y: visible; }
+  .atlas-content--sheet .atlas-deadsection--fill .atlas-table-wrap { overflow-y: visible; }
   .atlas-content--fill .atlas-side-list { max-height: 420px; }
 }
 
