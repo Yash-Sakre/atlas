@@ -53,14 +53,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   if (error) {
     return (
-      <div className="atlas-splash">
-        <p style={{ color: 'var(--ink)' }}>Couldn’t load analysis data.</p>
+      <div className="flex min-h-[60vh] flex-1 flex-col items-center justify-center gap-3.5 p-12 text-center text-ink-faint">
+        <p className="text-ink">Couldn’t load analysis data.</p>
         <p>
-          Tried <span className="mono">{dataUrl()}</span> — {error}
+          Tried <span className="font-mono tracking-normal">{dataUrl()}</span> — {error}
         </p>
-        <p style={{ fontSize: 13 }}>
-          Run <span className="mono">atlas serve</span> or pass{' '}
-          <span className="mono">?data=&lt;url&gt;</span>.
+        <p className="text-[13px]">
+          Run <span className="font-mono tracking-normal">atlas serve</span> or pass{' '}
+          <span className="font-mono tracking-normal">?data=&lt;url&gt;</span>.
         </p>
       </div>
     );
@@ -68,8 +68,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   if (!data) {
     return (
-      <div className="atlas-splash">
-        <div className="atlas-spinner" />
+      <div className="flex min-h-[60vh] flex-1 flex-col items-center justify-center gap-3.5 p-12 text-center text-ink-faint">
+        <div className="h-7.5 w-7.5 animate-spin rounded-full border-[2.5px] border-surface-2 border-t-accent" />
         <p>Loading analysis…</p>
       </div>
     );

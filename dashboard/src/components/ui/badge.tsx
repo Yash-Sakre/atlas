@@ -4,15 +4,13 @@ import { cn } from '@/lib/utils';
 
 /** shadcn Badge, themed to the Atlas palette. */
 const badgeVariants = cva(
-  'inline-flex items-center gap-[5px] whitespace-nowrap font-semibold tracking-[-0.01em]',
+  'inline-flex items-center gap-1.25 whitespace-nowrap font-semibold tracking-[-0.01em]',
   {
     variants: {
       variant: {
-        default:
-          'rounded-full px-[9px] py-[3px] text-[11px] bg-[var(--surface-2)] text-[var(--ink-muted)]',
-        source:
-          'rounded-full px-[9px] py-[3px] text-[11px] bg-[var(--surface-2)] text-[var(--ink-faint)] lowercase',
-        tag: 'rounded-[var(--r-sm)] px-[7px] py-[2px] text-[11px] font-normal font-mono bg-[var(--surface-2)] text-[var(--ink-muted)]',
+        default: 'rounded-full bg-surface-2 px-2.25 py-0.75 text-[11px] text-ink-muted',
+        source: 'rounded-full bg-surface-2 px-2.25 py-0.75 text-[11px] lowercase text-ink-faint',
+        tag: 'rounded-sm bg-surface-2 px-1.75 py-0.5 font-mono text-[11px] font-normal tracking-normal text-ink-muted',
       },
     },
     defaultVariants: { variant: 'default' },

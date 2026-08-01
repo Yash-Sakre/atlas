@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiInbox } from 'react-icons/fi';
 import { useData } from '../data';
 import type { Asset } from '../types';
-import { SearchField, SourceBadge, TypeBadge, useFuzzy } from '../ui';
+import { SearchField, SourceBadge, TypeBadge, useSearch } from '../ui';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import Detail from './Detail';
+import { cn } from '@/lib/utils';
 
 type Usage = 'all' | 'used' | 'unused';
 
-const DETAIL_KEYS = ['name', 'path', 'tags', 'signature', 'description.purpose'];
+const SEARCH_KEYS = ['name'];
 
 const USAGE_TABS: Array<[Usage, string]> = [
   ['all', 'All'],
@@ -39,7 +40,7 @@ export default function AssetList({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailRef = useRef<HTMLElement>(null);
 
-  const filter = useFuzzy(items, DETAIL_KEYS);
+  const filter = useSearch(items, SEARCH_KEYS);
 
   // Tags that actually appear in this collection, by frequency.
   const tags = useMemo(() => {
@@ -90,22 +91,28 @@ export default function AssetList({
 
   return (
     <>
-      <div className="atlas-pagehead">
-        <div className="atlas-pagehead-main">
-          <h1 className="atlas-pagehead-title">{title}</h1>
-          <p className="atlas-pagehead-sub">{subtitle}</p>
+      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
+        <div className="min-w-0">
+          <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
+            {title}
+          </h1>
+          <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+            {subtitle}
+          </p>
         </div>
-        <div className="atlas-pagehead-side">
-          <span className="atlas-pill tnum">{items.length} total</span>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium tabular-nums text-ink-muted">
+            {items.length} total
+          </span>
         </div>
       </div>
 
-      <div className="atlas-split">
-        <aside className="atlas-side">
-          <div className="atlas-filterbar">
+      <div className="grid min-h-0 flex-1 grid-cols-[360px_minmax(0,1fr)] items-stretch gap-5.5 max-[900px]:grid-cols-1">
+        <aside className="flex h-full min-h-0 flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             <SearchField value={query} onChange={setQuery} placeholder={placeholder} />
 
-            <div className="atlas-filter-line">
+            <div className="flex items-center justify-between gap-2.5">
               <Tabs value={usage} onValueChange={(v) => setUsage(v as Usage)}>
                 <TabsList>
                   {USAGE_TABS.map(([key, label]) => (
@@ -115,12 +122,12 @@ export default function AssetList({
                   ))}
                 </TabsList>
               </Tabs>
-              <span className="atlas-filter-count">
-                <b>{list.length}</b> / {items.length}
+              <span className="shrink-0 text-[12.5px] whitespace-nowrap tabular-nums text-ink-faint">
+                <b className="font-semibold text-ink-muted">{list.length}</b> / {items.length}
               </span>
             </div>
 
-            <div className="atlas-filter-line">
+            <div className="flex items-center justify-between gap-2.5">
               <ToggleGroup
                 type="multiple"
                 value={docsOnly ? ['documented'] : []}
@@ -128,7 +135,11 @@ export default function AssetList({
               >
               </ToggleGroup>
               {hasFilters && (
-                <button type="button" className="atlas-filter-clear" onClick={clearFilters}>
+                <button
+                  type="button"
+                  className="cursor-pointer border-none bg-none p-0 text-xs text-accent hover:underline"
+                  onClick={clearFilters}
+                >
                   Clear
                 </button>
               )}
@@ -139,7 +150,7 @@ export default function AssetList({
                 type="single"
                 value={tag}
                 onValueChange={setTag}
-                className="atlas-tagrow"
+                className="flex flex-wrap gap-1.5"
               >
                 {visibleTags.map((t) => (
                   <ToggleGroupItem key={t} value={t}>
@@ -149,8 +160,7 @@ export default function AssetList({
                 {tags.length > 8 && (
                   <button
                     type="button"
-                    className="atlas-filter-clear"
-                    style={{ alignSelf: 'center', paddingLeft: 2 }}
+                    className="cursor-pointer self-center border-none bg-none p-0 pl-0.5 text-xs text-accent hover:underline"
                     onClick={(e) => {
                       e.preventDefault();
                       setShowAllTags((v) => !v);
@@ -163,9 +173,9 @@ export default function AssetList({
             )}
           </div>
 
-          <div className="atlas-side-list">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain pr-1 max-[900px]:max-h-105">
             {list.length === 0 ? (
-              <div className="atlas-empty">
+              <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-10 text-center text-[13.5px] text-ink-faint">
                 <FiInbox size={26} strokeWidth={1.6} />
                 <p>No {title.toLowerCase()} match your filters.</p>
               </div>
@@ -173,16 +183,24 @@ export default function AssetList({
               list.map((a) => (
                 <button
                   key={a.id}
-                  className={`atlas-row${a.id === selectedId ? ' is-active' : ''}`}
+                  className={cn(
+                    'w-full cursor-pointer rounded-md bg-surface-1 px-3.25 py-2.75 text-left transition-[background-color,box-shadow] duration-120 hover:bg-surface-2',
+                    a.id === selectedId &&
+                      'bg-surface-2 shadow-[inset_2px_0_0_var(--color-accent)]',
+                  )}
                   onClick={() => select(a.id)}
                 >
-                  <div className="atlas-row-top">
-                    <span className="mono atlas-row-name atlas-trunc">{a.name}</span>
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span className="min-w-0 truncate font-mono text-[13.5px] font-semibold tracking-normal text-ink">
+                      {a.name}
+                    </span>
                     <TypeBadge type={a.type} />
                   </div>
-                  <span className="mono atlas-row-path atlas-trunc">{a.path}</span>
-                  <div className="atlas-row-meta">
-                    <span className="atlas-faint tnum" style={{ fontSize: 11 }}>
+                  <span className="mt-0.75 block truncate font-mono text-[11px] tracking-normal text-ink-faint">
+                    {a.path}
+                  </span>
+                  <div className="mt-2.25 flex items-center justify-between gap-2">
+                    <span className="text-[11px] tabular-nums text-ink-faint">
                       used {a.usageCount || 0}×
                     </span>
                     <SourceBadge source={a.description?.source} />
@@ -193,11 +211,14 @@ export default function AssetList({
           </div>
         </aside>
 
-        <section ref={detailRef} className="atlas-detail atlas-card">
+        <section
+          ref={detailRef}
+          className="h-full min-w-0 overflow-y-auto overscroll-contain rounded-lg bg-surface-1 shadow-card max-[900px]:h-auto max-[900px]:overflow-hidden"
+        >
           {selected ? (
             <Detail asset={selected} />
           ) : (
-            <div className="atlas-detail-empty">
+            <div className="flex h-full min-h-85 flex-col items-center justify-center gap-3 p-12 text-center text-sm text-ink-faint [&>svg]:text-ink-faint [&>svg]:opacity-70">
               <FiInbox size={32} strokeWidth={1.5} />
               <p>Select an asset to view its details</p>
             </div>

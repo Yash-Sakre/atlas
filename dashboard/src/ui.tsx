@@ -1,6 +1,5 @@
 /** Shared presentational primitives reused across views. */
-import { useMemo, type ReactNode } from 'react';
-import Fuse from 'fuse.js';
+import { type ReactNode } from 'react';
 import { FiSearch, FiExternalLink } from 'react-icons/fi';
 import type { AssetType } from './types';
 import { editorHref } from './lib/editor';
@@ -21,7 +20,7 @@ const BADGE_TEXT: Record<string, string> = {
 
 export function TypeBadge({ type }: { type: AssetType }) {
   return (
-    <Badge withDot style={{ color: BADGE_TEXT[type] || 'var(--ink-faint)' }}>
+    <Badge withDot style={{ color: BADGE_TEXT[type] || 'var(--color-ink-faint)' }}>
       {type}
     </Badge>
   );
@@ -70,12 +69,24 @@ export function EditorLink({
   return (
     <a
       href={href}
-      className={cn('atlas-editorlink', iconOnly && 'atlas-editorlink--icon', className)}
+      className={cn(
+        'group inline-flex max-w-full min-w-0 items-center gap-1.25 rounded-sm text-inherit no-underline transition-colors duration-120 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ring',
+        iconOnly && 'p-0.75 opacity-55 hover:opacity-100',
+        className,
+      )}
       title={label}
       aria-label={iconOnly ? label : undefined}
     >
       {children}
-      <FiExternalLink className="atlas-editorlink-glyph" aria-hidden="true" />
+      <FiExternalLink
+        className={cn(
+          'h-3 w-3 shrink-0 text-accent transition-opacity duration-120',
+          iconOnly
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
+        )}
+        aria-hidden="true"
+      />
     </a>
   );
 }
@@ -96,8 +107,8 @@ export function SearchField({
     <div className="relative flex-1">
       <FiSearch
         className={cn(
-          'pointer-events-none absolute top-1/2 -translate-y-1/2 text-[var(--ink-faint)]',
-          large ? 'left-[18px] h-[18px] w-[18px]' : 'left-4 h-4 w-4',
+          'pointer-events-none absolute top-1/2 -translate-y-1/2 text-ink-faint',
+          large ? 'left-4.5 h-4.5 w-4.5' : 'left-4 h-4 w-4',
         )}
       />
       <Input
@@ -105,21 +116,27 @@ export function SearchField({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(large ? 'pl-[46px] pr-[18px] py-[15px] text-base rounded-[var(--r-lg)]' : 'pl-[42px]')}
+        className={cn(large ? 'rounded-lg py-3.75 pr-4.5 pl-11.5 text-base' : 'pl-10.5')}
       />
     </div>
   );
 }
 
-/** Build a memoized Fuse index + a filter helper for a list of items. */
-export function useFuzzy<T>(items: T[], keys: string[]) {
-  const fuse = useMemo(
-    () => new Fuse(items, { keys, threshold: 0.38, ignoreLocation: true, minMatchCharLength: 2 }),
-    [items, keys.join(',')],
-  );
+/**
+ * Plain case-insensitive substring filter over the given fields.
+ *
+ * An empty query returns everything, so callers can chain their own
+ * filters (type, usage, tag…) on top of the result.
+ */
+export function useSearch<T>(items: T[], keys: string[]) {
   return (q: string): T[] => {
-    const query = q.trim();
+    const query = q.trim().toLowerCase();
     if (!query) return items.slice();
-    return fuse.search(query).map((r) => r.item);
+    return items.filter((item) =>
+      keys.some((key) => {
+        const value = (item as Record<string, unknown>)[key];
+        return value != null && String(value).toLowerCase().includes(query);
+      }),
+    );
   };
 }

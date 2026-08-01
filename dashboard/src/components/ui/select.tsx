@@ -14,18 +14,18 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-between gap-2 rounded-full bg-[var(--surface-2)] text-[var(--ink-muted)]',
-      'px-4 py-[11px] text-sm tracking-[-0.012em] cursor-pointer',
-      'transition-[box-shadow,color] duration-150 whitespace-nowrap',
-      'focus:outline-none focus:ring-[3px] focus:ring-[var(--accent-soft)] focus:text-[var(--ink)]',
-      'data-[placeholder]:text-[var(--ink-muted)] [&>span]:truncate',
+      'inline-flex items-center justify-between gap-2 rounded-full bg-surface-2 text-ink-muted',
+      'cursor-pointer px-4 py-2.75 text-sm tracking-[-0.012em]',
+      'whitespace-nowrap transition-[box-shadow,color] duration-150',
+      'focus:text-ink focus:ring-[3px] focus:ring-accent-soft focus:outline-none',
+      'data-[placeholder]:text-ink-muted [&>span]:truncate',
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)]" />
+      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -40,14 +40,16 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'z-50 min-w-[8rem] overflow-hidden rounded-[var(--r-md)] bg-[var(--surface-2)] p-1.5',
+        'z-50 min-w-32 overflow-hidden rounded-md bg-surface-2 p-1.5',
         'shadow-[0_20px_56px_-18px_rgba(0,0,0,0.75)]',
         position === 'popper' && 'data-[side=bottom]:translate-y-1.5',
         className,
       )}
       {...props}
     >
-      <SelectPrimitive.Viewport className={cn(position === 'popper' && 'w-full min-w-[var(--radix-select-trigger-width)]')}>
+      <SelectPrimitive.Viewport
+        className={cn(position === 'popper' && 'w-full min-w-(--radix-select-trigger-width)')}
+      >
         {children}
       </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
@@ -62,19 +64,19 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center justify-between gap-4 rounded-[var(--r-sm)]',
-      'px-2.5 py-2 text-sm text-[var(--ink-muted)] outline-none tracking-[-0.012em]',
+      'relative flex w-full cursor-pointer items-center justify-between gap-4 rounded-sm select-none',
+      'px-2.5 py-2 text-sm tracking-[-0.012em] text-ink-muted outline-none',
       // Keyboard/pointer highlight must be LIGHTER than the menu (surface-2),
       // so arrow-key navigation is clearly visible.
-      'data-[highlighted]:bg-[var(--accent-soft)] data-[highlighted]:text-[var(--ink)]',
-      'data-[state=checked]:text-[var(--ink)] data-[state=checked]:font-medium',
+      'data-highlighted:bg-accent-soft data-highlighted:text-ink',
+      'data-[state=checked]:font-medium data-[state=checked]:text-ink',
       className,
     )}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <SelectPrimitive.ItemIndicator>
-      <FiCheck className="h-3.5 w-3.5 text-[var(--accent-blue)]" />
+      <FiCheck className="h-3.5 w-3.5 text-accent" />
     </SelectPrimitive.ItemIndicator>
   </SelectPrimitive.Item>
 ));

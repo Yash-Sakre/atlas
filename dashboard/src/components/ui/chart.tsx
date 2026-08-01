@@ -27,7 +27,13 @@ export function ChartContainer({
     ? { flex: '1 1 auto', minHeight, width: '100%' }
     : { height, width: '100%' };
   return (
-    <div className={cn('atlas-chart', className)} style={style}>
+    <div
+      className={cn(
+        "font-body [&_svg]:overflow-visible [&_text]:font-features-['tnum']",
+        className,
+      )}
+      style={style}
+    >
       <ResponsiveContainer width="100%" height="100%">
         {children}
       </ResponsiveContainer>
@@ -53,11 +59,13 @@ export function ChartTooltip({
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
-    <div className="atlas-charttip">
-      {d.hue && <span className="atlas-charttip-dot" style={{ background: d.hue }} />}
-      <span className="atlas-charttip-label">{d.label}</span>
-      <span className="atlas-charttip-val tnum">{d.value}</span>
-      {d.sub && <span className="atlas-charttip-sub">{d.sub}</span>}
+    <div className="inline-flex items-center gap-2 rounded-md bg-surface-2 px-2.75 py-1.75 text-[12.5px] whitespace-nowrap shadow-card">
+      {d.hue && (
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: d.hue }} />
+      )}
+      <span className="text-ink-muted">{d.label}</span>
+      <span className="font-semibold tabular-nums text-ink">{d.value}</span>
+      {d.sub && <span className="text-[11.5px] text-ink-faint">{d.sub}</span>}
     </div>
   );
 }

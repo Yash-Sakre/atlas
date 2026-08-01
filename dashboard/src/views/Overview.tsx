@@ -3,36 +3,36 @@ import { Link } from 'react-router-dom';
 import { FiArrowUpRight, FiCheck } from 'react-icons/fi';
 import { useData } from '../data';
 import CompositionChart from '../components/CompositionChart';
-import { SearchField, TypeBadge, EditorLink, useFuzzy } from '../ui';
+import { SearchField, TypeBadge, EditorLink, useSearch } from '../ui';
 import type { Asset, SearchRecord } from '../types';
 
 type CardKey = 'components' | 'hooks' | 'utils' | 'contexts' | 'routes';
 
 const CARDS: Array<{ label: string; key: CardKey; href: string; hue: string }> = [
-  { label: 'Components', key: 'components', href: '/components', hue: 'var(--t-component)' },
-  { label: 'Hooks', key: 'hooks', href: '/hooks', hue: 'var(--t-hook)' },
-  { label: 'Utils', key: 'utils', href: '/utils', hue: 'var(--t-utility)' },
-  { label: 'Contexts', key: 'contexts', href: '/contexts', hue: 'var(--t-context)' },
-  { label: 'Routes', key: 'routes', href: '/routes', hue: 'var(--t-route)' },
+  { label: 'Components', key: 'components', href: '/components', hue: 'var(--color-t-component)' },
+  { label: 'Hooks', key: 'hooks', href: '/hooks', hue: 'var(--color-t-hook)' },
+  { label: 'Utils', key: 'utils', href: '/utils', hue: 'var(--color-t-utility)' },
+  { label: 'Contexts', key: 'contexts', href: '/contexts', hue: 'var(--color-t-context)' },
+  { label: 'Routes', key: 'routes', href: '/routes', hue: 'var(--color-t-route)' },
 ];
 
 /** Per-type hue for the leaderboard bars (mirrors the legend palette). */
 const TYPE_HUE: Record<string, string> = {
-  component: 'var(--t-component)',
-  hook: 'var(--t-hook)',
-  utility: 'var(--t-utility)',
-  context: 'var(--t-context)',
-  store: 'var(--t-store)',
-  provider: 'var(--t-provider)',
-  route: 'var(--t-route)',
+  component: 'var(--color-t-component)',
+  hook: 'var(--color-t-hook)',
+  utility: 'var(--color-t-utility)',
+  context: 'var(--color-t-context)',
+  store: 'var(--color-t-store)',
+  provider: 'var(--color-t-provider)',
+  route: 'var(--color-t-route)',
 };
 
 /** Dependency-kind hue for the "Most imported" leaderboard dots. */
 const DEP_KIND_HUE: Record<string, string> = {
-  prod: 'var(--success)',
-  dev: 'var(--t-component)',
-  peer: 'var(--t-hook)',
-  optional: 'var(--t-hook)',
+  prod: 'var(--color-success)',
+  dev: 'var(--color-t-component)',
+  peer: 'var(--color-t-hook)',
+  optional: 'var(--color-t-hook)',
 };
 
 const PAGE_FOR: Record<string, string> = {
@@ -70,11 +70,11 @@ export default function Overview() {
   const fw = data.meta.framework;
 
   const [query, setQuery] = useState('');
-  const search = useFuzzy(data.search || [], ['name', 'path', 'description', 'tags', 'keywords']);
+  const search = useSearch(data.search || [], ['name']);
   const hits = useMemo(
     () => (query.trim() ? search(query).slice(0, 8) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query],
+    [query, data.search],
   );
 
   const fwTags = [
@@ -108,9 +108,9 @@ export default function Overview() {
     const unused = total - reused - once;
     const pct = total ? Math.round((reused / total) * 100) : 0;
     return [
-      { label: 'Reused (2+ places)', n: reused, hue: 'var(--success)', total, pct },
-      { label: 'Used once', n: once, hue: 'var(--t-component)', total, pct },
-      { label: 'Never referenced', n: unused, hue: 'var(--warn)', total, pct },
+      { label: 'Reused (2+ places)', n: reused, hue: 'var(--color-success)', total, pct },
+      { label: 'Used once', n: once, hue: 'var(--color-t-component)', total, pct },
+      { label: 'Never referenced', n: unused, hue: 'var(--color-warn)', total, pct },
     ];
   }, [allAssets]);
   const reusedPct = reuse[0].pct;
@@ -151,9 +151,13 @@ export default function Overview() {
   const depUnused = deps.filter((d) => (d.usedInCount || 0) === 0).length;
   const depBreakdown = depCounts
     ? [
-        { label: 'Production', n: depCounts.prod, hue: 'var(--success)' },
-        { label: 'Development', n: depCounts.dev, hue: 'var(--t-component)' },
-        { label: 'Peer / optional', n: depCounts.peer + depCounts.optional, hue: 'var(--t-hook)' },
+        { label: 'Production', n: depCounts.prod, hue: 'var(--color-success)' },
+        { label: 'Development', n: depCounts.dev, hue: 'var(--color-t-component)' },
+        {
+          label: 'Peer / optional',
+          n: depCounts.peer + depCounts.optional,
+          hue: 'var(--color-t-hook)',
+        },
       ].filter((r) => r.n > 0)
     : [];
   const topDeps = useMemo(
@@ -168,33 +172,43 @@ export default function Overview() {
 
   return (
     <>
-      <div className="atlas-pagehead">
-        <div className="atlas-pagehead-main">
-          <h1 className="atlas-pagehead-title">Overview</h1>
-          <p className="atlas-pagehead-sub">
-            <span className="mono atlas-muted" title={data.meta.root}>{folderName(data.meta.root)}</span>
-            <span className="atlas-dot-sep">·</span>
-            <span>{totalAssets} assets across {s.fileCount} files</span>
-            <span className="atlas-dot-sep">·</span>
-            <span className="atlas-faint">analyzed {formatTime(data.meta.generatedAt)}</span>
+      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
+        <div className="min-w-0">
+          <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
+            Overview
+          </h1>
+          <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+            <span className="font-mono tracking-normal text-ink-muted" title={data.meta.root}>
+              {folderName(data.meta.root)}
+            </span>
+            <span className="text-ink-faint">·</span>
+            <span>
+              {totalAssets} assets across {s.fileCount} files
+            </span>
+            <span className="text-ink-faint">·</span>
+            <span className="text-ink-faint">analyzed {formatTime(data.meta.generatedAt)}</span>
           </p>
         </div>
-        <div className="atlas-pagehead-side">
-          <div className="atlas-field" style={{ width: 'min(340px, 60vw)' }}>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <div className="relative w-[min(340px,60vw)]">
             <SearchField value={query} onChange={setQuery} placeholder="Search everything…" />
             {hits.length > 0 && (
-              <div className="atlas-card" style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 30, overflow: 'hidden', boxShadow: '0 24px 56px -20px rgba(0,0,0,.7)' }}>
+              <div className="absolute top-[calc(100%+8px)] right-0 left-0 z-30 overflow-hidden rounded-lg bg-surface-1 shadow-[0_24px_56px_-20px_rgba(0,0,0,0.7)]">
                 {hits.map((r: SearchRecord) => (
                   <Link
                     key={r.id}
                     to={PAGE_FOR[r.type] || '/'}
                     onClick={() => setQuery('')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--hairline-soft)', textDecoration: 'none' }}
+                    className="flex items-center gap-3 border-b border-hairline-soft px-3.5 py-2.5 no-underline"
                   >
                     <TypeBadge type={r.type} />
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span className="mono" style={{ color: 'var(--ink)', fontSize: 13 }}>{r.name}</span>
-                      <span className="mono atlas-faint atlas-trunc" style={{ display: 'block', fontSize: 11 }}>{r.path}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="font-mono text-[13px] tracking-normal text-ink">
+                        {r.name}
+                      </span>
+                      <span className="block truncate font-mono text-[11px] tracking-normal text-ink-faint">
+                        {r.path}
+                      </span>
                     </span>
                   </Link>
                 ))}
@@ -204,22 +218,33 @@ export default function Overview() {
         </div>
       </div>
 
-      <div className="atlas-bento-stack">
+      <div className="flex flex-col gap-4">
         {/* KPI tiles */}
-        <div className="atlas-kpis">
+        <div className="grid grid-cols-5 gap-4 max-[1180px]:grid-cols-3 max-[620px]:grid-cols-2">
           {CARDS.map((c, i) => {
             const n = counts[i];
             const share = totalAssets ? Math.max(6, (n / totalAssets) * 100) : 0;
             return (
-              <Link key={c.href} to={c.href} className="atlas-kpi">
-                <span className="atlas-kpi-arrow"><FiArrowUpRight size={15} /></span>
-                <div className="atlas-kpi-top">
-                  <span className="atlas-kpi-dot" style={{ background: c.hue }} />
-                  <span className="atlas-kpi-label">{c.label}</span>
+              <Link
+                key={c.href}
+                to={c.href}
+                className="group relative flex flex-col gap-3 rounded-2xl bg-surface-1 px-4.5 pt-4.5 pb-4.25 shadow-card transition-[background-color,transform] duration-140 hover:-translate-y-0.5 hover:bg-surface-2"
+              >
+                <span className="absolute top-3.5 right-3.5 translate-x-[-2px] translate-y-[2px] text-ink-faint transition-[opacity,transform,color] duration-140 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:text-ink">
+                  <FiArrowUpRight size={15} />
+                </span>
+                <div className="flex items-center gap-1.75">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: c.hue }} />
+                  <span className="text-[12.5px] tracking-[-0.01em] text-ink-muted">{c.label}</span>
                 </div>
-                <div className="atlas-kpi-num">{n}</div>
-                <div className="atlas-kpi-bar">
-                  <span style={{ width: `${share}%`, background: c.hue }} />
+                <div className="font-display text-[34px] leading-[0.9] font-semibold tracking-[-0.04em] tabular-nums text-ink">
+                  {n}
+                </div>
+                <div className="h-0.75 overflow-hidden rounded-[3px] bg-surface-3">
+                  <span
+                    className="block h-full rounded-[3px]"
+                    style={{ width: `${share}%`, background: c.hue }}
+                  />
                 </div>
               </Link>
             );
@@ -228,11 +253,13 @@ export default function Overview() {
 
         {/* Composition + Reusability */}
         {totalAssets > 0 && (
-          <div className="atlas-bento-row atlas-bento-row--grow grid-cols-1 lg:grid-cols-[1.6fr_1fr]">
-            <div className="atlas-panel atlas-panel-chart">
-              <div className="atlas-panel-head">
-                <h2 className="atlas-section-title">Composition</h2>
-                <span className="atlas-panel-hint">{totalAssets} reusable assets</span>
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.6fr_1fr]">
+            <div className="flex flex-col rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+              <div className="mb-4.5 flex items-center justify-between gap-3">
+                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                  Composition
+                </h2>
+                <span className="text-xs text-ink-faint">{totalAssets} reusable assets</span>
               </div>
               <CompositionChart
                 data={CARDS.map((c, i) => ({
@@ -244,27 +271,37 @@ export default function Overview() {
               />
             </div>
 
-            <div className="atlas-panel">
-              <div className="atlas-panel-head">
-                <h2 className="atlas-section-title">Reusability</h2>
-                <span className="atlas-panel-hint">across {allAssets.length} assets</span>
+            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+              <div className="mb-4.5 flex items-center justify-between gap-3">
+                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                  Reusability
+                </h2>
+                <span className="text-xs text-ink-faint">across {allAssets.length} assets</span>
               </div>
-              <div className="atlas-reuse-headline">
-                <span className="atlas-reuse-pct">{reusedPct}%</span>
-                <span className="atlas-reuse-pct-label">reused in 2+ places</span>
+              <div className="mb-5 flex items-baseline gap-1.5">
+                <span className="font-display text-[40px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums text-ink">
+                  {reusedPct}%
+                </span>
+                <span className="text-[13.5px] text-ink-muted">reused in 2+ places</span>
               </div>
-              <div className="atlas-reuse-rows">
+              <div className="flex flex-col gap-3.5">
                 {reuse.map((r) => {
                   const w = r.total ? Math.max(r.n ? 4 : 0, (r.n / r.total) * 100) : 0;
                   return (
-                    <div key={r.label} className="atlas-reuse-row">
-                      <div className="atlas-reuse-line">
-                        <span className="atlas-legend-dot" style={{ background: r.hue }} />
+                    <div key={r.label} className="flex flex-col gap-1.75">
+                      <div className="flex items-center gap-2 text-[13px] text-ink-muted">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: r.hue }}
+                        />
                         {r.label}
-                        <b>{r.n}</b>
+                        <b className="ml-auto font-semibold tabular-nums text-ink">{r.n}</b>
                       </div>
-                      <div className="atlas-reuse-track">
-                        <span style={{ width: `${w}%`, background: r.hue }} />
+                      <div className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
+                        <span
+                          className="block h-full rounded-[5px]"
+                          style={{ width: `${w}%`, background: r.hue }}
+                        />
                       </div>
                     </div>
                   );
@@ -275,68 +312,90 @@ export default function Overview() {
         )}
 
         {/* Most referenced + Health */}
-        <div className="atlas-bento-row atlas-bento-row--grow grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
-          <div className="atlas-panel">
-            <div className="atlas-panel-head">
-              <h2 className="atlas-section-title">Most referenced</h2>
-              <span className="atlas-panel-hint">{links} dependency links</span>
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.3fr_1fr]">
+          <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+            <div className="mb-4.5 flex items-center justify-between gap-3">
+              <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                Most referenced
+              </h2>
+              <span className="text-xs text-ink-faint">{links} dependency links</span>
             </div>
             {topUsed.length > 0 ? (
-              <div className="atlas-lead">
+              <div className="flex flex-col">
                 {topUsed.map((a, i) => (
-                  <div key={a.id} className="atlas-lead-row">
-                    <span className="atlas-lead-rank">{i + 1}</span>
+                  <div
+                    key={a.id}
+                    className="grid grid-cols-[16px_auto_minmax(0,1fr)_88px_30px] items-center gap-2.75 border-t border-hairline-soft py-2.25 first:border-t-0"
+                  >
+                    <span className="text-right text-xs tabular-nums text-ink-faint">{i + 1}</span>
                     <TypeBadge type={a.type} />
-                    <span className="atlas-lead-name">
+                    <span className="min-w-0">
                       <EditorLink
                         root={data.meta.root}
                         path={a.location?.filePath || a.path}
                         line={a.location?.line}
                         column={a.location?.column}
                       >
-                        <span className="atlas-trunc mono" title={a.name}>{a.name}</span>
+                        <span
+                          className="min-w-0 truncate font-mono text-[13px] tracking-normal text-ink"
+                          title={a.name}
+                        >
+                          {a.name}
+                        </span>
                       </EditorLink>
                     </span>
-                    <span className="atlas-lead-bar">
+                    <span className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
                       <span
+                        className="block h-full rounded-[5px]"
                         style={{
                           width: `${Math.max(6, ((a.usageCount || 0) / maxUse) * 100)}%`,
-                          background: TYPE_HUE[a.type] || 'var(--ink-faint)',
+                          background: TYPE_HUE[a.type] || 'var(--color-ink-faint)',
                         }}
                       />
                     </span>
-                    <span className="atlas-lead-count">{a.usageCount || 0}</span>
+                    <span className="text-right text-[13px] font-semibold tabular-nums text-ink">
+                      {a.usageCount || 0}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="atlas-faint" style={{ fontSize: 13.5 }}>No references detected yet.</p>
+              <p className="text-[13.5px] text-ink-faint">No references detected yet.</p>
             )}
           </div>
 
-          <div className="atlas-panel">
-            <div className="atlas-panel-head">
-              <h2 className="atlas-section-title">Health</h2>
+          <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+            <div className="mb-4.5 flex items-center justify-between gap-3">
+              <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                Health
+              </h2>
               <span
-                className="atlas-pill"
-                style={{ color: issueTotal ? 'var(--warn)' : 'var(--success)' }}
+                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium ${
+                  issueTotal ? 'text-warn' : 'text-success'
+                }`}
               >
-                <span className="atlas-dot" style={{ background: 'currentColor' }} />
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
                 {issueTotal ? `${issueTotal} to review` : 'All clear'}
               </span>
             </div>
-            <div className="atlas-rows">
+            <div className="flex flex-col">
               {warnings.map((w) => (
-                <div key={w.label} className="atlas-lrow">
+                <div
+                  key={w.label}
+                  className="flex items-center gap-2.75 border-t border-hairline-soft py-2.5 first:border-t-0"
+                >
                   <span
-                    className="atlas-status-dot"
-                    style={{ background: w.n ? 'var(--warn)' : 'var(--success)' }}
+                    className={`h-1.75 w-1.75 shrink-0 rounded-full ${
+                      w.n ? 'bg-warn' : 'bg-success'
+                    }`}
                   />
-                  <span className="atlas-lrow-label">{w.label}</span>
+                  <span className="min-w-0 text-[13.5px] text-ink">{w.label}</span>
                   {w.n ? (
-                    <span className="atlas-lrow-val" style={{ color: 'var(--warn)' }}>{w.n}</span>
+                    <span className="ml-auto text-[13.5px] font-semibold tabular-nums text-warn">
+                      {w.n}
+                    </span>
                   ) : (
-                    <span className="atlas-lrow-val atlas-faint" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span className="ml-auto inline-flex items-center gap-1 text-[13.5px] font-semibold tabular-nums text-ink-faint">
                       <FiCheck size={13} /> 0
                     </span>
                   )}
@@ -348,33 +407,46 @@ export default function Overview() {
 
         {/* Dependencies */}
         {deps.length > 0 && (
-          <div className="atlas-bento-row atlas-bento-row--grow grid-cols-1 lg:grid-cols-[1fr_1.3fr]">
-            <div className="atlas-panel">
-              <div className="atlas-panel-head">
-                <h2 className="atlas-section-title">Dependencies</h2>
-                <Link to="/dependencies" className="atlas-panel-hint atlas-viewall">
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr_1.3fr]">
+            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+              <div className="mb-4.5 flex items-center justify-between gap-3">
+                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                  Dependencies
+                </h2>
+                <Link
+                  to="/dependencies"
+                  className="inline-flex items-center gap-0.75 text-xs text-ink-faint no-underline transition-colors duration-120 hover:text-accent"
+                >
                   View all <FiArrowUpRight size={13} />
                 </Link>
               </div>
-              <div className="atlas-reuse-headline">
-                <span className="atlas-reuse-pct">{depCounts?.total ?? deps.length}</span>
-                <span className="atlas-reuse-pct-label">
+              <div className="mb-5 flex items-baseline gap-1.5">
+                <span className="font-display text-[40px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums text-ink">
+                  {depCounts?.total ?? deps.length}
+                </span>
+                <span className="text-[13.5px] text-ink-muted">
                   packages declared{depUnused ? ` · ${depUnused} unused` : ''}
                 </span>
               </div>
-              <div className="atlas-reuse-rows">
+              <div className="flex flex-col gap-3.5">
                 {depBreakdown.map((r) => {
                   const total = depCounts?.total || 1;
                   const w = Math.max(r.n ? 4 : 0, (r.n / total) * 100);
                   return (
-                    <div key={r.label} className="atlas-reuse-row">
-                      <div className="atlas-reuse-line">
-                        <span className="atlas-legend-dot" style={{ background: r.hue }} />
+                    <div key={r.label} className="flex flex-col gap-1.75">
+                      <div className="flex items-center gap-2 text-[13px] text-ink-muted">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: r.hue }}
+                        />
                         {r.label}
-                        <b>{r.n}</b>
+                        <b className="ml-auto font-semibold tabular-nums text-ink">{r.n}</b>
                       </div>
-                      <div className="atlas-reuse-track">
-                        <span style={{ width: `${w}%`, background: r.hue }} />
+                      <div className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
+                        <span
+                          className="block h-full rounded-[5px]"
+                          style={{ width: `${w}%`, background: r.hue }}
+                        />
                       </div>
                     </div>
                   );
@@ -382,64 +454,71 @@ export default function Overview() {
               </div>
             </div>
 
-            <div className="atlas-panel">
-              <div className="atlas-panel-head">
-                <h2 className="atlas-section-title">Most imported</h2>
-                <span className="atlas-panel-hint">packages by files importing them</span>
+            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+              <div className="mb-4.5 flex items-center justify-between gap-3">
+                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+                  Most imported
+                </h2>
+                <span className="text-xs text-ink-faint">packages by files importing them</span>
               </div>
               {topDeps.length > 0 ? (
-                <div className="atlas-lead">
+                <div className="flex flex-col">
                   {topDeps.map((d, i) => (
-                    <div key={d.name} className="atlas-lead-row">
-                      <span className="atlas-lead-rank">{i + 1}</span>
-                      <span className="atlas-legend-dot" style={{ background: DEP_KIND_HUE[d.kind] }} />
-                      <span className="atlas-lead-name">
+                    <div
+                      key={d.name}
+                      className="grid grid-cols-[16px_auto_minmax(0,1fr)_88px_30px] items-center gap-2.75 border-t border-hairline-soft py-2.25 first:border-t-0"
+                    >
+                      <span className="text-right text-xs tabular-nums text-ink-faint">
+                        {i + 1}
+                      </span>
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: DEP_KIND_HUE[d.kind] }}
+                      />
+                      <span className="min-w-0">
                         {d.npmUrl ? (
                           <a
                             href={d.npmUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="atlas-trunc mono"
+                            className="block truncate font-mono tracking-normal no-underline"
                             title={`${d.name} on npm`}
-                            style={{ textDecoration: 'none' }}
                           >
                             {d.name}
                           </a>
                         ) : (
-                          <span className="atlas-trunc mono" title={d.name}>{d.name}</span>
+                          <span
+                            className="block truncate font-mono tracking-normal"
+                            title={d.name}
+                          >
+                            {d.name}
+                          </span>
                         )}
                       </span>
-                      <span className="atlas-lead-bar">
+                      <span className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
                         <span
+                          className="block h-full rounded-[5px]"
                           style={{
                             width: `${Math.max(6, ((d.usedInCount || 0) / maxDepUse) * 100)}%`,
-                            background: DEP_KIND_HUE[d.kind] || 'var(--ink-faint)',
+                            background: DEP_KIND_HUE[d.kind] || 'var(--color-ink-faint)',
                           }}
                         />
                       </span>
-                      <span className="atlas-lead-count">{d.usedInCount || 0}</span>
+                      <span className="text-right text-[13px] font-semibold tabular-nums text-ink">
+                        {d.usedInCount || 0}
+                      </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="atlas-faint" style={{ fontSize: 13.5 }}>
+                <p className="text-[13.5px] text-ink-faint">
                   No declared packages are imported in the scanned source.
                 </p>
               )}
             </div>
           </div>
         )}
-
       </div>
     </>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="atlas-ministat">
-      <span className="atlas-ministat-num">{value}</span>
-      <span className="atlas-ministat-label">{label}</span>
-    </div>
   );
 }

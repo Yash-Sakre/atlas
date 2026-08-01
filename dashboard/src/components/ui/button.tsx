@@ -8,19 +8,18 @@ import { cn } from '@/lib/utils';
  * it matches the existing dark/warm design rather than shadcn's defaults.
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium tracking-[-0.012em] leading-none transition-[transform,background-color,border-color,color] duration-150 cursor-pointer border border-transparent active:scale-[0.97] focus-visible:outline-none focus-visible:border-[var(--accent-ring)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-soft)] disabled:opacity-50 disabled:pointer-events-none [&_svg]:shrink-0',
+  'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full border border-transparent leading-none font-medium tracking-[-0.012em] whitespace-nowrap transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97] focus-visible:border-accent-ring focus-visible:ring-[3px] focus-visible:ring-accent-soft focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        primary: 'bg-[var(--ink)] text-[var(--canvas)] hover:bg-[#ececec]',
-        secondary:
-          'bg-[var(--surface-2)] text-[var(--ink)] hover:bg-[var(--surface-3)]',
-        ghost: 'bg-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-1)]',
+        primary: 'bg-ink text-canvas hover:bg-[#ececec]',
+        secondary: 'bg-surface-2 text-ink hover:bg-surface-3',
+        ghost: 'bg-transparent text-ink-muted hover:bg-surface-1 hover:text-ink',
       },
       size: {
-        default: 'min-h-[42px] px-[17px] py-[11px] text-sm',
-        sm: 'px-3 py-[7px] text-[13px] gap-1.5',
-        icon: 'h-10 w-10 p-0 rounded-full',
+        default: 'min-h-10.5 px-4.25 py-2.75 text-sm',
+        sm: 'gap-1.5 px-3 py-1.75 text-[13px]',
+        icon: 'h-10 w-10 rounded-full p-0',
       },
     },
     defaultVariants: { variant: 'primary', size: 'default' },
