@@ -9,11 +9,11 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
         type={type}
         ref={ref}
         className={cn(
-          'w-full box-border rounded-[var(--r-md)] bg-[var(--surface-2)] text-[var(--ink)]',
+          'box-border w-full rounded-md bg-surface-2 text-ink',
           'px-3.5 py-3 text-[15px] tracking-[-0.012em]',
           'transition-[box-shadow,background-color] duration-150',
-          'placeholder:text-[var(--ink-faint)]',
-          'focus:outline-none focus:ring-[3px] focus:ring-[var(--accent-soft)]',
+          'placeholder:text-ink-faint',
+          'focus:ring-[3px] focus:ring-accent-soft focus:outline-none',
           className,
         )}
         {...props}

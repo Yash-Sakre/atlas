@@ -16,14 +16,14 @@ const ToggleGroupItem = React.forwardRef<
   <ToggleGroupPrimitive.Item
     ref={ref}
     className={cn(
-      'inline-flex items-center gap-1.5 rounded-full px-[11px] py-[5px] cursor-pointer',
-      'text-[12.5px] font-medium leading-none tracking-[-0.01em]',
+      'inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.75 py-1.25',
+      'text-[12.5px] leading-none font-medium tracking-[-0.01em]',
       'transition-[background-color,color,opacity] duration-150',
       // "on" (data-state=on): lit chip
-      'data-[state=on]:bg-[var(--surface-3)] data-[state=on]:text-[var(--ink)]',
+      'data-[state=on]:bg-surface-3 data-[state=on]:text-ink',
       // "off" (data-state=off): dimmed, subtle fill keeps the chip shape
-      'data-[state=off]:bg-[var(--surface-1)] data-[state=off]:text-[var(--ink-faint)] data-[state=off]:opacity-80 data-[state=off]:hover:opacity-100 data-[state=off]:hover:text-[var(--ink-muted)]',
-      'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-soft)]',
+      'data-[state=off]:bg-surface-1 data-[state=off]:text-ink-faint data-[state=off]:opacity-80 data-[state=off]:hover:text-ink-muted data-[state=off]:hover:opacity-100',
+      'focus-visible:ring-[3px] focus-visible:ring-accent-soft focus-visible:outline-none',
       className,
     )}
     {...props}

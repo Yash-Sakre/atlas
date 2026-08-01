@@ -14,10 +14,7 @@ const TabsList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn(
-      'inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-1)] p-[3px]',
-      className,
-    )}
+    className={cn('inline-flex items-center gap-0.5 rounded-full bg-surface-1 p-0.75', className)}
     {...props}
   />
 ));
@@ -30,11 +27,11 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center gap-1.5 rounded-full px-[13px] py-[7px] cursor-pointer',
-      'text-[13px] font-medium leading-none tracking-[-0.012em] text-[var(--ink-muted)]',
-      'transition-[background-color,color] duration-150 hover:text-[var(--ink)]',
-      'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-soft)]',
-      'data-[state=active]:bg-[var(--surface-3)] data-[state=active]:text-[var(--ink)] data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.3)]',
+      'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full px-3.25 py-1.75',
+      'text-[13px] leading-none font-medium tracking-[-0.012em] text-ink-muted',
+      'transition-[background-color,color] duration-150 hover:text-ink',
+      'focus-visible:ring-[3px] focus-visible:ring-accent-soft focus-visible:outline-none',
+      'data-[state=active]:bg-surface-3 data-[state=active]:text-ink data-[state=active]:shadow-[0_1px_2px_rgba(0,0,0,0.3)]',
       className,
     )}
     {...props}

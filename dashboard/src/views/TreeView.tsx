@@ -78,18 +78,28 @@ interface NodeData {
 
 function AtlasNode({ data }: NodeProps<NodeData>) {
   if (data.lane) {
-    return <div className="atlas-lane-label">{data.lane}</div>;
+    return (
+      <div className="font-display text-[11px] font-semibold tracking-[0.06em] text-ink-faint uppercase">
+        {data.lane}
+      </div>
+    );
   }
   return (
-    <div
-      className={`atlas-node atlas-node--${data.type}${data.isRoot ? ' is-root' : ''}${data.isFolder ? ' is-folder' : ''}`}
-    >
+    <div className="flex max-w-[210px] items-center gap-2 rounded-full bg-surface-2 px-3.5 py-2 font-mono text-xs tracking-normal text-ink shadow-[0_8px_20px_-10px_rgba(0,0,0,0.65)]">
       <Handle type="target" position={Position.Left} isConnectable={false} />
-      {data.isFolder ? <FiFolder className="atlas-node-folder" /> : <span className="atlas-node-dot" />}
-      <span className="atlas-node-label" title={data.label}>
+      {data.isFolder ? (
+        <FiFolder className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
+      ) : (
+        <span className="h-2 w-2 shrink-0 rounded-full bg-ink-faint" />
+      )}
+      <span className="truncate" title={data.label}>
         {data.label}
       </span>
-      {data.isFolder && <span className="atlas-node-count">{data.count}</span>}
+      {data.isFolder && (
+        <span className="ml-1 rounded-full bg-surface-1 px-1.5 py-px text-[10px] tabular-nums text-ink-faint">
+          {data.count}
+        </span>
+      )}
       <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   );
@@ -251,8 +261,10 @@ export default function TreeView() {
     return (
       <>
         <Heading />
-        <div className="atlas-flow">
-          <div className="atlas-flow-loading">No dependency data was extracted for this project.</div>
+        <div className="relative h-[calc(100vh-300px)] min-h-[480px] w-full overflow-hidden rounded-xl bg-surface-1 shadow-card">
+          <div className="flex h-full items-center justify-center p-10 text-center text-[13.5px] text-ink-faint">
+            No dependency data was extracted for this project.
+          </div>
         </div>
       </>
     );
@@ -261,9 +273,9 @@ export default function TreeView() {
   return (
     <>
       <Heading />
-      <div className="atlas-tree-layout">
-        <aside className="atlas-tree-filters">
-          <div className="atlas-filter-group atlas-flow-search">
+      <div className="grid grid-cols-[268px_minmax(0,1fr)] items-start gap-4.5 max-[880px]:grid-cols-1">
+        <aside className="flex flex-col gap-4 rounded-xl bg-surface-1 p-4 shadow-card [&>div+div]:border-t [&>div+div]:border-hairline-soft [&>div+div]:pt-4">
+          <div className="relative flex flex-col gap-2.25">
             <Input
               placeholder="Search a node to root…"
               value={query}
@@ -275,11 +287,11 @@ export default function TreeView() {
               onBlur={() => setTimeout(() => setOpen(false), 120)}
             />
             {open && results.length > 0 && (
-              <div className="atlas-flow-results">
+              <div className="absolute top-[calc(100%+6px)] right-0 left-0 z-30 max-h-[320px] overflow-y-auto rounded-md bg-surface-2 p-1 shadow-[0_20px_56px_-18px_rgba(0,0,0,0.75)]">
                 {results.map((it) => (
                   <button
                     key={it.id}
-                    className="atlas-flow-result"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-left hover:bg-surface-3"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       rootOn(it.id);
@@ -287,12 +299,15 @@ export default function TreeView() {
                       setOpen(false);
                     }}
                   >
-                    <span className="atlas-node-dot" style={{ background: TYPE_COLORS[it.type] || TYPE_COLORS.file }} />
-                    <span style={{ minWidth: 0, flex: 1 }}>
-                      <span className="mono" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: TYPE_COLORS[it.type] || TYPE_COLORS.file }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-mono text-[12.5px] tracking-normal text-ink">
                         {it.label}
                       </span>
-                      <span className="mono p" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span className="block truncate font-mono text-[11px] tracking-normal text-ink-faint">
                         {it.path}
                       </span>
                     </span>
@@ -302,8 +317,10 @@ export default function TreeView() {
             )}
           </div>
 
-          <div className="atlas-filter-group">
-            <span className="atlas-filter-label">View</span>
+          <div className="flex flex-col gap-2.25">
+            <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-faint uppercase">
+              View
+            </span>
             <Tabs value={mode} onValueChange={(v) => changeMode(v as Mode)}>
               <TabsList className="flex w-full">
                 <TabsTrigger value="all" className="flex-1">
@@ -319,9 +336,13 @@ export default function TreeView() {
             </Tabs>
 
             {folderFilter && mode === 'all' && (
-              <div className="atlas-flow-root" style={{ marginTop: 8 }}>
-                Folder: <span className="mono" style={{ color: 'var(--ink-muted)' }}>{folderFilter}</span>{' '}
-                <button className="atlas-filter-clear" onClick={() => setFolderFilter(null)}>
+              <div className="mt-2 truncate text-xs text-ink-faint">
+                Folder:{' '}
+                <span className="font-mono tracking-normal text-ink-muted">{folderFilter}</span>{' '}
+                <button
+                  className="cursor-pointer border-none bg-none p-0 text-xs text-accent hover:underline"
+                  onClick={() => setFolderFilter(null)}
+                >
                   clear
                 </button>
               </div>
@@ -329,8 +350,8 @@ export default function TreeView() {
 
             {mode === 'root' && (
               <>
-                <div className="atlas-flow-root" title={labelFor(rootId)} style={{ marginTop: 8 }}>
-                  Root: <span style={{ color: 'var(--ink-muted)' }}>{labelFor(rootId)}</span>
+                <div className="mt-2 truncate text-xs text-ink-faint" title={labelFor(rootId)}>
+                  Root: <span className="text-ink-muted">{labelFor(rootId)}</span>
                 </div>
                 <Select value={String(depth)} onValueChange={(v) => setDepth(parseInt(v, 10))}>
                   <SelectTrigger className="mt-2 w-full">
@@ -349,8 +370,10 @@ export default function TreeView() {
           </div>
 
           {mode !== 'folders' && (
-            <div className="atlas-filter-group">
-              <span className="atlas-filter-label">Layout</span>
+            <div className="flex flex-col gap-2.25">
+              <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-faint uppercase">
+                Layout
+              </span>
               <Tabs value={layout} onValueChange={(v) => setLayout(v as LayoutKind)}>
                 <TabsList className="flex w-full">
                   <TabsTrigger value="graph" className="flex-1">
@@ -364,11 +387,16 @@ export default function TreeView() {
             </div>
           )}
 
-          <div className="atlas-filter-group">
-            <div className="atlas-filter-head">
-              <span className="atlas-filter-label">Node types</span>
+          <div className="flex flex-col gap-2.25">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-faint uppercase">
+                Node types
+              </span>
               {hiddenTypes.size > 0 && (
-                <button className="atlas-filter-clear" onClick={() => setHiddenTypes(new Set())}>
+                <button
+                  className="cursor-pointer border-none bg-none p-0 text-xs text-accent hover:underline"
+                  onClick={() => setHiddenTypes(new Set())}
+                >
                   reset
                 </button>
               )}
@@ -384,11 +412,16 @@ export default function TreeView() {
           </div>
 
           {allKinds.length > 0 && (
-            <div className="atlas-filter-group">
-              <div className="atlas-filter-head">
-                <span className="atlas-filter-label">Edges</span>
+            <div className="flex flex-col gap-2.25">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-faint uppercase">
+                  Edges
+                </span>
                 {hiddenKinds.size > 0 && (
-                  <button className="atlas-filter-clear" onClick={() => setHiddenKinds(new Set())}>
+                  <button
+                    className="cursor-pointer border-none bg-none p-0 text-xs text-accent hover:underline"
+                    onClick={() => setHiddenKinds(new Set())}
+                  >
                     reset
                   </button>
                 )}
@@ -405,8 +438,10 @@ export default function TreeView() {
           )}
 
           {mode !== 'folders' && (
-            <div className="atlas-filter-group">
-              <span className="atlas-filter-label">Declutter</span>
+            <div className="flex flex-col gap-2.25">
+              <span className="text-[11px] font-semibold tracking-[0.04em] text-ink-faint uppercase">
+                Declutter
+              </span>
               <ToggleGroup
                 type="multiple"
                 value={hideIsolated ? ['iso'] : []}
@@ -418,7 +453,7 @@ export default function TreeView() {
               </ToggleGroup>
               <Select value={String(minUsage)} onValueChange={(v) => setMinUsage(parseInt(v, 10))}>
                 <SelectTrigger className="w-full">
-                  <span className="atlas-faint" style={{ fontSize: 12 }}>Min usage:&nbsp;</span>
+                  <span className="text-xs text-ink-faint">Min usage:&nbsp;</span>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -432,10 +467,8 @@ export default function TreeView() {
             </div>
           )}
 
-          <div className="atlas-filter-foot">
-            <span className="atlas-faint" style={{ fontSize: 12 }}>
-              {view.note}
-            </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink-faint">{view.note}</span>
             <Button variant="secondary" size="sm" onClick={resetAll} title="Reset view & filters">
               <FiRefreshCw className="h-[15px] w-[15px]" />
               Reset
@@ -443,9 +476,14 @@ export default function TreeView() {
           </div>
         </aside>
 
-        <div className="atlas-flow" ref={flowRef}>
+        <div
+          className="relative h-[calc(100vh-300px)] min-h-[480px] w-full overflow-hidden rounded-xl bg-surface-1 shadow-card [&>#atlas-tree]:absolute [&>#atlas-tree]:inset-0 [&_.react-flow]:h-full [&_.react-flow]:w-full"
+          ref={flowRef}
+        >
           {view.nodes.length === 0 ? (
-            <div className="atlas-flow-loading">No nodes match the current filters.</div>
+            <div className="flex h-full items-center justify-center p-10 text-center text-[13.5px] text-ink-faint">
+              No nodes match the current filters.
+            </div>
           ) : (
             <ReactFlow
               key={`${mode}|${layout}|${rootId}|${depth}|${hiddenTypes.size}|${hiddenKinds.size}|${hideIsolated}|${minUsage}|${folderFilter}`}
@@ -480,11 +518,11 @@ export default function TreeView() {
           )}
         </div>
       </div>
-      <p className="atlas-faint mt-3" style={{ fontSize: 13 }}>
-        <strong style={{ color: 'var(--ink-muted)' }}>Click</strong> a node to focus its neighbors ·{' '}
-        <strong style={{ color: 'var(--ink-muted)' }}>double-click</strong> to root the tree on it ·{' '}
-        <strong style={{ color: 'var(--ink-muted)' }}>Folders</strong> view collapses by directory (click a folder to
-        drill in). Scroll to zoom, drag to pan.
+      <p className="mt-3 text-[13px] text-ink-faint">
+        <strong className="text-ink-muted">Click</strong> a node to focus its neighbors ·{' '}
+        <strong className="text-ink-muted">double-click</strong> to root the tree on it ·{' '}
+        <strong className="text-ink-muted">Folders</strong> view collapses by directory (click a
+        folder to drill in). Scroll to zoom, drag to pan.
       </p>
     </>
   );
@@ -493,9 +531,13 @@ export default function TreeView() {
 function Heading() {
   return (
     <div className="mb-6">
-      <p className="atlas-eyebrow">Relationships</p>
-      <h1 className="atlas-page-title">Dependency Tree</h1>
-      <p className="atlas-lead">
+      <p className="mb-1.5 text-[11px] font-semibold tracking-[0.05em] text-ink-faint uppercase">
+        Relationships
+      </p>
+      <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
+        Dependency Tree
+      </h1>
+      <p className="mt-1.5 text-sm text-ink-muted">
         Explore the dependency graph at any scale — group by folder, lay out in type lanes, prune the
         noise, click a node to focus its neighbors, or root the tree on it.
       </p>
@@ -726,8 +768,8 @@ function assemble(info: Info[], edges: ViewEdge[], a: BuildArgs, rootId: string,
       type: 'smoothstep',
       style: { stroke: c, strokeWidth: w },
       label: e.count && e.count > 1 ? String(e.count) : undefined,
-      labelStyle: { fill: 'var(--ink-faint)', fontSize: 10 },
-      labelBgStyle: { fill: 'var(--surface-1)' },
+      labelStyle: { fill: 'var(--color-ink-faint)', fontSize: 10 },
+      labelBgStyle: { fill: 'var(--color-surface-1)' },
       markerEnd: { type: MarkerType.ArrowClosed, color: c, width: 15, height: 15 },
     };
   });

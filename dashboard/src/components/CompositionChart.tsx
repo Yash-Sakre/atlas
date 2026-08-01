@@ -24,18 +24,18 @@ export default function CompositionChart({ data }: { data: CompositionDatum[] })
   return (
     <ChartContainer fill minHeight={120}>
       <BarChart data={rows} margin={{ top: 18, right: 6, left: 6, bottom: 0 }} barCategoryGap="26%">
-        <CartesianGrid vertical={false} stroke="var(--hairline-soft)" strokeDasharray="0" />
+        <CartesianGrid vertical={false} stroke="var(--color-hairline-soft)" strokeDasharray="0" />
         <XAxis
           dataKey="label"
           interval={0}
           tickLine={false}
           axisLine={false}
-          tick={{ fill: 'var(--ink-muted)', fontSize: 11.5 }}
+          tick={{ fill: 'var(--color-ink-muted)', fontSize: 11.5 }}
           dy={6}
         />
         <YAxis hide domain={[0, 'dataMax']} />
         <Tooltip
-          cursor={{ fill: 'var(--surface-2)', opacity: 0.5, radius: 6 }}
+          cursor={{ fill: 'var(--color-surface-2)', opacity: 0.5, radius: 6 }}
           content={<ChartTooltip />}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={68}>
@@ -46,7 +46,7 @@ export default function CompositionChart({ data }: { data: CompositionDatum[] })
             dataKey="value"
             position="top"
             offset={9}
-            fill="var(--ink)"
+            fill="var(--color-ink)"
             fontSize={12.5}
             fontWeight={600}
           />

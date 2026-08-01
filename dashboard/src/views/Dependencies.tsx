@@ -25,12 +25,16 @@ const KIND_LABEL: Record<DependencyKind, string> = {
 
 const KIND_COLOR: Record<DependencyKind, string> = {
   prod: '#7be3a8',
-  dev: 'var(--ink-faint)',
+  dev: 'var(--color-ink-faint)',
   peer: '#ffce85',
   optional: '#c0a8ff',
 };
 
 const KIND_ORDER: DependencyKind[] = ['prod', 'dev', 'peer', 'optional'];
+
+/** Table chrome: hairline rules, sticky headers, top-aligned cells. */
+const TABLE_CLASS =
+  'w-full border-collapse text-[13.5px] [&_td]:border-b [&_td]:border-hairline-soft [&_td]:py-2.25 [&_td]:pr-4 [&_td]:align-top [&_td]:text-ink-muted [&_td:first-child]:min-w-[200px] [&_td:first-child]:text-ink [&_th]:sticky [&_th]:top-0 [&_th]:z-1 [&_th]:border-b [&_th]:border-hairline-soft [&_th]:bg-surface-1 [&_th]:py-2 [&_th]:pr-4 [&_th]:text-left [&_th]:text-[12.5px] [&_th]:font-medium [&_th]:text-ink-muted [&_tr:last-child_td]:border-b-0';
 
 export default function Dependencies() {
   const data = useData();
@@ -78,11 +82,13 @@ export default function Dependencies() {
     return (
       <>
         <Head total={0} outdated={0} />
-        <div className="atlas-panel atlas-deadclear">
-          <FiPackage size={26} style={{ color: 'var(--ink-faint)' }} />
+        <div className="flex items-center gap-4 rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+          <FiPackage size={26} className="text-ink-faint" />
           <div>
-            <h2 className="atlas-section-title" style={{ marginBottom: 4 }}>No dependencies found</h2>
-            <p className="atlas-faint">
+            <h2 className="m-0 mb-1 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+              No dependencies found
+            </h2>
+            <p className="text-ink-faint">
               Atlas didn’t find a package.json with declared dependencies at the project root.
             </p>
           </div>
@@ -94,31 +100,36 @@ export default function Dependencies() {
   const c = report.counts;
   const unused = deps.filter((d) => d.usedInCount === 0).length;
   const kpis: Array<{ label: string; n: number; hue: string }> = [
-    { label: 'Total', n: c.total, hue: 'var(--t-component)' },
+    { label: 'Total', n: c.total, hue: 'var(--color-t-component)' },
     { label: 'Production', n: c.prod, hue: KIND_COLOR.prod },
-    { label: 'Dev', n: c.dev, hue: 'var(--ink-faint)' },
-    { label: 'Updates', n: outdatedSet.size, hue: 'var(--warn)' },
-    { label: 'Unused', n: unused, hue: 'var(--warn)' },
+    { label: 'Dev', n: c.dev, hue: 'var(--color-ink-faint)' },
+    { label: 'Updates', n: outdatedSet.size, hue: 'var(--color-warn)' },
+    { label: 'Unused', n: unused, hue: 'var(--color-warn)' },
   ];
 
   return (
     <>
       <Head total={c.total} outdated={outdatedSet.size} />
 
-      <div className="atlas-kpis" style={{ marginBottom: 16 }}>
+      <div className="mb-4 grid grid-cols-5 gap-4 max-[1180px]:grid-cols-3 max-[620px]:grid-cols-2">
         {kpis.map((k) => (
-          <div key={k.label} className="atlas-kpi" style={{ cursor: 'default' }}>
-            <div className="atlas-kpi-top">
-              <span className="atlas-kpi-dot" style={{ background: k.hue }} />
-              <span className="atlas-kpi-label">{k.label}</span>
+          <div
+            key={k.label}
+            className="relative flex cursor-default flex-col gap-3 rounded-2xl bg-surface-1 px-4.5 pt-4.5 pb-4.25 shadow-card"
+          >
+            <div className="flex items-center gap-1.75">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: k.hue }} />
+              <span className="text-[12.5px] tracking-[-0.01em] text-ink-muted">{k.label}</span>
             </div>
-            <div className="atlas-kpi-num">{k.n}</div>
+            <div className="font-display text-[34px] leading-[0.9] font-semibold tracking-[-0.04em] tabular-nums text-ink">
+              {k.n}
+            </div>
           </div>
         ))}
       </div>
 
-      <section className="atlas-panel atlas-deadsection atlas-deadsection--fill">
-        <div className="atlas-deadfilters">
+      <section className="flex min-h-0 flex-auto flex-col rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
+        <div className="mb-4.5 flex flex-wrap items-center gap-3">
           <SearchField value={query} onChange={setQuery} placeholder="Search dependencies…" />
           {kindsPresent.length > 1 && (
             <ToggleGroup
@@ -150,13 +161,13 @@ export default function Dependencies() {
         </div>
 
         {rows.length === 0 ? (
-          <div className="atlas-empty">
+          <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-10 text-center text-[13.5px] text-ink-faint">
             <FiInbox size={24} strokeWidth={1.6} />
             <p>No dependencies match your filters.</p>
           </div>
         ) : (
-          <div className="atlas-table-wrap">
-            <table className="atlas-table atlas-deptable">
+          <div className="min-h-0 flex-auto overflow-x-auto overflow-y-auto overscroll-contain max-[900px]:overflow-y-visible">
+            <table className={TABLE_CLASS}>
               <thead>
                 <tr>
                   <th>Package</th>
@@ -188,20 +199,23 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
   return (
     <tr>
       <td>
-        <div className="atlas-dep-name">
+        <div className="flex min-w-0 items-center gap-2">
           {isRegistry && dep.npmUrl ? (
             <a
               href={dep.npmUrl}
               target="_blank"
               rel="noreferrer"
-              className="atlas-editorlink mono"
+              className="group inline-flex max-w-full min-w-0 items-center gap-1.25 rounded-sm font-mono text-[13.5px] font-medium tracking-normal text-inherit no-underline transition-colors duration-120 hover:text-accent"
               title={`${dep.name} on npm`}
             >
               {dep.name}
-              <FiExternalLink className="atlas-editorlink-glyph" aria-hidden="true" />
+              <FiExternalLink
+                className="h-3 w-3 shrink-0 text-accent opacity-0 transition-opacity duration-120 group-hover:opacity-100"
+                aria-hidden="true"
+              />
             </a>
           ) : (
-            <span className="mono" style={{ color: 'var(--ink)', fontWeight: 500 }}>{dep.name}</span>
+            <span className="font-mono font-medium tracking-normal text-ink">{dep.name}</span>
           )}
           {!isRegistry && (
             <Badge variant="tag" title={`Resolved from a ${source} source, not the npm registry`}>
@@ -213,7 +227,7 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
           )}
         </div>
         {isRegistry && status === 'ok' && meta?.description && (
-          <p className="atlas-dep-desc atlas-faint atlas-trunc" title={meta.description}>
+          <p className="mt-0.75 mb-0 max-w-[460px] truncate text-xs text-ink-faint" title={meta.description}>
             {meta.description}
           </p>
         )}
@@ -221,39 +235,59 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
       <td>
         <Badge withDot style={{ color: KIND_COLOR[dep.kind] }}>{KIND_LABEL[dep.kind]}</Badge>
       </td>
-      <td className="mono atlas-faint">{dep.range}</td>
-      <td className="mono">{dep.installed || <span className="atlas-faint">—</span>}</td>
+      <td className="font-mono tracking-normal text-ink-faint">{dep.range}</td>
+      <td className="font-mono tracking-normal">
+        {dep.installed || <span className="text-ink-faint">—</span>}
+      </td>
       <td>
         {!isRegistry ? (
-          <span className="atlas-faint mono" title={`Linked from a ${source} source`}>—</span>
+          <span className="font-mono tracking-normal text-ink-faint" title={`Linked from a ${source} source`}>
+            —
+          </span>
         ) : status === 'loading' ? (
-          <span className="atlas-faint mono">…</span>
+          <span className="font-mono tracking-normal text-ink-faint">…</span>
         ) : status === 'error' ? (
-          <span className="atlas-faint mono" title="Couldn’t reach the npm registry">n/a</span>
+          <span
+            className="font-mono tracking-normal text-ink-faint"
+            title="Couldn’t reach the npm registry"
+          >
+            n/a
+          </span>
         ) : outdated ? (
-          <span className="atlas-dep-update" title={`Newer version available: ${meta?.latest}`}>
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-[12.5px] text-warn"
+            title={`Newer version available: ${meta?.latest}`}
+          >
             <FiArrowUp size={12} />
-            <span className="mono">{meta?.latest}</span>
+            <span className="font-mono tracking-normal">{meta?.latest}</span>
           </span>
         ) : (
-          <span className="atlas-dep-latest mono" title="Up to date">
+          <span
+            className="inline-flex items-center gap-1 font-mono text-[12.5px] tracking-normal text-success"
+            title="Up to date"
+          >
             <FiCheck size={12} /> {meta?.latest}
           </span>
         )}
       </td>
       <td>
         {dep.usedInCount > 0 ? (
-          <span className="tnum" title={`Imported in ${dep.usedInCount} file(s)`}>{dep.usedInCount}</span>
+          <span className="tabular-nums" title={`Imported in ${dep.usedInCount} file(s)`}>
+            {dep.usedInCount}
+          </span>
         ) : (
-          <span className="atlas-pill" style={{ color: 'var(--warn)' }} title="Declared but never imported">
-            <span className="atlas-dot" style={{ background: 'currentColor' }} />
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium text-warn"
+            title="Declared but never imported"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
             unused
           </span>
         )}
       </td>
       <td>
         {isRegistry ? (
-          <div className="atlas-dep-links">
+          <div className="inline-flex items-center gap-2.5 text-ink-faint [&_a]:inline-flex [&_a]:text-inherit [&_a]:transition-colors [&_a:hover]:text-accent">
             {dep.npmUrl && (
               <a href={dep.npmUrl} target="_blank" rel="noreferrer" title="View on npm" aria-label="View on npm">
                 <FaNpm size={19} />
@@ -271,7 +305,7 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
             )}
           </div>
         ) : (
-          <span className="atlas-faint">—</span>
+          <span className="text-ink-faint">—</span>
         )}
       </td>
     </tr>
@@ -280,20 +314,23 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
 
 function Head({ total, outdated }: { total: number; outdated: number }) {
   return (
-    <div className="atlas-pagehead">
-      <div className="atlas-pagehead-main">
-        <h1 className="atlas-pagehead-title">Dependencies</h1>
-        <p className="atlas-pagehead-sub">
+    <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
+      <div className="min-w-0">
+        <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
+          Dependencies
+        </h1>
+        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
           Third-party packages declared in package.json — enriched live from the npm registry.
           Click a name to open it on npm.
         </p>
       </div>
-      <div className="atlas-pagehead-side">
+      <div className="flex shrink-0 items-center gap-2.5">
         <span
-          className="atlas-pill"
-          style={{ color: outdated ? 'var(--warn)' : 'var(--success)' }}
+          className={`inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium ${
+            outdated ? 'text-warn' : 'text-success'
+          }`}
         >
-          <span className="atlas-dot" style={{ background: 'currentColor' }} />
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
           {total ? (outdated ? `${outdated} update${outdated > 1 ? 's' : ''} available` : 'All up to date') : 'None'}
         </span>
       </div>
