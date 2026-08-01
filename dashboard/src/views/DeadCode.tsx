@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FiCheckCircle, FiCopy, FiFile, FiInbox } from 'react-icons/fi';
 import { useData } from '../data';
 import type { Asset, AssetType } from '../types';
-import { EditorLink, SearchField, TypeBadge, useFuzzy } from '../ui';
+import { EditorLink, SearchField, TypeBadge, useSearch } from '../ui';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -86,31 +86,30 @@ export default function DeadCode() {
   // ── Unused exports: search + type filter ──
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
-  const fuzzyExports = useFuzzy(deadExports, ['name', 'path']);
+  const searchExports = useSearch(deadExports, ['name']);
   const typesPresent = useMemo(
     () => TYPE_ORDER.filter((t) => deadExports.some((d) => d.type === t)),
     [deadExports],
   );
   const unusedList = useMemo(() => {
-    let base = fuzzyExports(query);
+    let base = searchExports(query);
     if (typeFilter.length) base = base.filter((d) => typeFilter.includes(d.type));
     return [...base].sort((a, b) => a.name.localeCompare(b.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, typeFilter, deadExports]);
 
-  // ── Duplicates: search over names + file paths ──
+  // ── Duplicates: search over the names in each group ──
   const [dupQuery, setDupQuery] = useState('');
   const dupIndexed = useMemo(
-    () =>
-      duplicates.map((d) => ({
-        ...d,
-        _names: d.names.join(' '),
-        _paths: d.ids.map(idPath).join(' '),
-      })),
+    () => duplicates.map((d) => ({ ...d, _names: d.names.join(' ') })),
     [duplicates],
   );
-  const fuzzyDupes = useFuzzy(dupIndexed, ['_names', '_paths']);
-  const dupList = useMemo(() => fuzzyDupes(dupQuery), [dupQuery, fuzzyDupes]);
+  const searchDupes = useSearch(dupIndexed, ['_names']);
+  const dupList = useMemo(
+    () => searchDupes(dupQuery),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dupQuery, dupIndexed],
+  );
 
   if (total === 0) {
     return (

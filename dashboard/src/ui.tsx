@@ -1,6 +1,5 @@
 /** Shared presentational primitives reused across views. */
-import { useMemo, type ReactNode } from 'react';
-import Fuse from 'fuse.js';
+import { type ReactNode } from 'react';
 import { FiSearch, FiExternalLink } from 'react-icons/fi';
 import type { AssetType } from './types';
 import { editorHref } from './lib/editor';
@@ -123,15 +122,21 @@ export function SearchField({
   );
 }
 
-/** Build a memoized Fuse index + a filter helper for a list of items. */
-export function useFuzzy<T>(items: T[], keys: string[]) {
-  const fuse = useMemo(
-    () => new Fuse(items, { keys, threshold: 0.38, ignoreLocation: true, minMatchCharLength: 2 }),
-    [items, keys.join(',')],
-  );
+/**
+ * Plain case-insensitive substring filter over the given fields.
+ *
+ * An empty query returns everything, so callers can chain their own
+ * filters (type, usage, tag…) on top of the result.
+ */
+export function useSearch<T>(items: T[], keys: string[]) {
   return (q: string): T[] => {
-    const query = q.trim();
+    const query = q.trim().toLowerCase();
     if (!query) return items.slice();
-    return fuse.search(query).map((r) => r.item);
+    return items.filter((item) =>
+      keys.some((key) => {
+        const value = (item as Record<string, unknown>)[key];
+        return value != null && String(value).toLowerCase().includes(query);
+      }),
+    );
   };
 }

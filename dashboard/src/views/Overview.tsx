@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiArrowUpRight, FiCheck } from 'react-icons/fi';
 import { useData } from '../data';
 import CompositionChart from '../components/CompositionChart';
-import { SearchField, TypeBadge, EditorLink, useFuzzy } from '../ui';
+import { SearchField, TypeBadge, EditorLink, useSearch } from '../ui';
 import type { Asset, SearchRecord } from '../types';
 
 type CardKey = 'components' | 'hooks' | 'utils' | 'contexts' | 'routes';
@@ -70,11 +70,11 @@ export default function Overview() {
   const fw = data.meta.framework;
 
   const [query, setQuery] = useState('');
-  const search = useFuzzy(data.search || [], ['name', 'path', 'description', 'tags', 'keywords']);
+  const search = useSearch(data.search || [], ['name']);
   const hits = useMemo(
     () => (query.trim() ? search(query).slice(0, 8) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query],
+    [query, data.search],
   );
 
   const fwTags = [

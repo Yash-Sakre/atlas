@@ -199,9 +199,7 @@ export default function TreeView() {
 
   const ql = query.trim().toLowerCase();
   const results = ql
-    ? searchItems
-        .filter((it) => it.label.toLowerCase().includes(ql) || it.path.toLowerCase().includes(ql))
-        .slice(0, 14)
+    ? searchItems.filter((it) => it.label.toLowerCase().includes(ql)).slice(0, 14)
     : [];
 
   const enabledTypes = allTypes.filter((t) => !hiddenTypes.has(t));

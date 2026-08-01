@@ -113,11 +113,7 @@ export default function RoutesView() {
   const ql = query.trim().toLowerCase();
   const matches = useMemo(() => {
     if (!ql) return [];
-    return routes.filter((r) =>
-      [r.routePath, r.name, r.componentName, r.path]
-        .filter(Boolean)
-        .some((s) => String(s).toLowerCase().includes(ql)),
-    );
+    return routes.filter((r) => (r.routePath || '').toLowerCase().includes(ql));
   }, [ql, routes]);
 
   return (
@@ -147,7 +143,7 @@ export default function RoutesView() {
         <div className="grid min-h-0 flex-1 grid-cols-[360px_minmax(0,1fr)] items-stretch gap-5.5 max-[900px]:grid-cols-1">
           <aside className="flex h-full min-h-0 flex-col gap-3">
             <div className="flex flex-col gap-2.5">
-              <SearchField value={query} onChange={setQuery} placeholder="Filter routes…" />
+              <SearchField value={query} onChange={setQuery} placeholder="Search by route path…" />
               <span className="shrink-0 text-[12.5px] whitespace-nowrap tabular-nums text-ink-faint">
                 <b className="font-semibold text-ink-muted">{ql ? matches.length : routes.length}</b>{' '}
                 / {routes.length}

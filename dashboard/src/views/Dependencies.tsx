@@ -11,7 +11,7 @@ import {
 import { FaNpm } from 'react-icons/fa';
 import { useData } from '../data';
 import type { DependencyInfo, DependencyKind } from '../types';
-import { SearchField, useFuzzy } from '../ui';
+import { SearchField, useSearch } from '../ui';
 import { useNpmRegistry, isOutdated, sourceOf, SOURCE_LABEL, type NpmMeta } from '../lib/npm';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -52,7 +52,7 @@ export default function Dependencies() {
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<string[]>([]);
   const [flags, setFlags] = useState<string[]>([]);
-  const fuzzy = useFuzzy(deps, ['name']);
+  const search = useSearch(deps, ['name']);
 
   const current = (d: DependencyInfo) => d.installed || d.range;
   const outdatedSet = useMemo(() => {
@@ -70,7 +70,7 @@ export default function Dependencies() {
   );
 
   const rows = useMemo(() => {
-    let base = fuzzy(query);
+    let base = search(query);
     if (kindFilter.length) base = base.filter((d) => kindFilter.includes(d.kind));
     if (flags.includes('outdated')) base = base.filter((d) => outdatedSet.has(d.name));
     if (flags.includes('unused')) base = base.filter((d) => d.usedInCount === 0);

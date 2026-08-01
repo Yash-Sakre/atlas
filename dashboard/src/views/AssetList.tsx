@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiInbox } from 'react-icons/fi';
 import { useData } from '../data';
 import type { Asset } from '../types';
-import { SearchField, SourceBadge, TypeBadge, useFuzzy } from '../ui';
+import { SearchField, SourceBadge, TypeBadge, useSearch } from '../ui';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import Detail from './Detail';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 type Usage = 'all' | 'used' | 'unused';
 
-const DETAIL_KEYS = ['name', 'path', 'tags', 'signature', 'description.purpose'];
+const SEARCH_KEYS = ['name'];
 
 const USAGE_TABS: Array<[Usage, string]> = [
   ['all', 'All'],
@@ -40,7 +40,7 @@ export default function AssetList({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailRef = useRef<HTMLElement>(null);
 
-  const filter = useFuzzy(items, DETAIL_KEYS);
+  const filter = useSearch(items, SEARCH_KEYS);
 
   // Tags that actually appear in this collection, by frequency.
   const tags = useMemo(() => {

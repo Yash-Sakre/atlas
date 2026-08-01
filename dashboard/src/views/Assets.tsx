@@ -21,7 +21,7 @@ import {
 import type { IconType } from 'react-icons';
 import { useData } from '../data';
 import type { StaticAsset, StaticAssetKind } from '../types';
-import { EditorLink, SearchField, useFuzzy } from '../ui';
+import { EditorLink, SearchField, useSearch } from '../ui';
 import { fileUrl, formatBytes, formatDimensions, isPreviewable } from '../lib/assetFile';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -54,7 +54,7 @@ const SORTS: Array<[Sort, string]> = [
   ['usage', 'usage'],
 ];
 
-const SEARCH_KEYS = ['name', 'path', 'ext'];
+const SEARCH_KEYS = ['name'];
 
 export default function Assets() {
   const data = useData();
@@ -67,7 +67,7 @@ export default function Assets() {
   const [sort, setSort] = useState<Sort>('name');
   const [active, setActive] = useState<StaticAsset | null>(null);
 
-  const fuzzy = useFuzzy(assets, SEARCH_KEYS);
+  const search = useSearch(assets, SEARCH_KEYS);
 
   const kindsPresent = useMemo(
     () => KIND_ORDER.filter((k) => assets.some((a) => a.kind === k)),
@@ -75,7 +75,7 @@ export default function Assets() {
   );
 
   const rows = useMemo(() => {
-    let base = fuzzy(query);
+    let base = search(query);
     if (kinds.length) base = base.filter((a) => kinds.includes(a.kind));
     if (flags.includes('unused')) base = base.filter((a) => !(a.usageCount || 0));
     if (flags.includes('public')) base = base.filter((a) => a.isPublic);
@@ -141,7 +141,7 @@ export default function Assets() {
 
       <section className="flex min-h-0 flex-auto flex-col rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
         <div className="mb-4.5 flex flex-wrap items-center gap-3">
-          <SearchField value={query} onChange={setQuery} placeholder="Search assets by name or path…" />
+          <SearchField value={query} onChange={setQuery} placeholder="Search assets by name…" />
           {kindsPresent.length > 1 && (
             <ToggleGroup type="multiple" value={kinds} onValueChange={setKinds} className="flex flex-wrap gap-1.5">
               {kindsPresent.map((k) => (
