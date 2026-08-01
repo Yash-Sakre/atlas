@@ -7,7 +7,8 @@ const TREE = `.atlas/
 ├─ analysis.json      full snapshot (everything below, combined)
 ├─ components.json    hooks.json  utils.json  contexts.json  routes.json
 ├─ graph.json         dead-code.json  architecture.json
-└─ dependencies.json  search.json`;
+├─ dependencies.json  static-assets.json
+└─ search.json`;
 
 const CI = `# fail the build if anything new goes unused
 npx codebase-atlas dead-code --json > dead-code.json`;

@@ -11,7 +11,7 @@ export default function DashboardViews() {
         lead="atlas serve opens a local React app over the analysis snapshot. Every view reads the same snapshot, so nothing is ever stale relative to anything else."
       />
 
-      <H2 id="views">The seven views</H2>
+      <H2 id="views">The eight views</H2>
       <div className="view-list">
         {DASHBOARD_VIEWS.map((v) => (
           <div className="view-row" key={v.id}>
@@ -42,6 +42,16 @@ export default function DashboardViews() {
         writes the same app as a static bundle — the dashboard plus a <code>data.json</code> snapshot — so
         you can host a read-only map of the codebase for the whole team.
       </P>
+
+      <Callout kind="note" title="Static asset previews come from disk">
+        The Static assets view renders each file from its real path: <code>serve</code> streams the original
+        through the local server, so nothing is copied out of your project, inlined into the data payload or
+        written to a temp folder. Only paths the scan actually discovered are readable, and each one must
+        still resolve inside the project root. A hosted <Link to="/docs/cli/export">
+          <code>export</code>
+        </Link>{' '}
+        has no filesystem behind it, so previews there fall back to typed placeholders.
+      </Callout>
 
       <Callout kind="note" title="Live data, one exception">
         Everything is computed offline from your code. The only network call is optional: the Dependencies

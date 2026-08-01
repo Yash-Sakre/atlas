@@ -80,7 +80,7 @@ export default function GettingStarted() {
         </Link>
         <Link className="next-card" to="/docs/dashboard">
           <b>Dashboard views</b>
-          <span>What each of the seven views is for.</span>
+          <span>What each of the eight views is for.</span>
         </Link>
         <Link className="next-card" to="/docs/outputs">
           <b>Analysis outputs</b>

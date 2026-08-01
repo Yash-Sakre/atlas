@@ -62,8 +62,10 @@ export const DOCS_GROUPS: DocsGroup[] = [
       {
         path: '/docs/dashboard',
         title: 'Views',
-        summary: 'What each of the seven dashboard views shows you.',
-        keywords: 'overview assets detail routes tree dead code dependencies serve export',
+        summary: 'What each of the eight dashboard views shows you.',
+        keywords:
+          'overview assets detail routes tree dead code dependencies static assets images fonts media preview serve export',
+        isNew: true,
       },
     ],
   },

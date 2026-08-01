@@ -6,9 +6,10 @@ const LINES: string[] = [
   '<span class="c-ok">✓</span> Components <span class="c-tag">9</span>   <span class="c-ok">✓</span> Hooks <span class="c-tag">3</span>   <span class="c-ok">✓</span> Utils <span class="c-tag">4</span>',
   '<span class="c-ok">✓</span> Contexts <span class="c-tag">2</span>   <span class="c-ok">✓</span> Routes <span class="c-tag">2</span>',
   '<span class="c-ok">✓</span> Dependencies <span class="c-tag">31</span> packages · <span class="c-tag">4</span> outdated',
-  '<span class="c-warn">⚠</span> 3 unused exports · 2 orphan files',
+  '<span class="c-ok">✓</span> Static assets <span class="c-tag">46</span> files · <span class="c-tag">7.2 MB</span> on disk',
+  '<span class="c-warn">⚠</span> 3 unused exports · 2 orphan files · 5 unreferenced assets',
   '<span class="c-dim">Most used:</span> Button <span class="c-tag">5×</span> · TextInput <span class="c-tag">3×</span>',
-  '<span class="c-dim">Wrote</span> .atlas/ <span class="c-dim">— 11 JSON files</span>',
+  '<span class="c-dim">Wrote</span> .atlas/ <span class="c-dim">— 12 JSON files</span>',
   '<span class="c-ok">→</span> Dashboard ready at <span class="c-link">http://localhost:4321</span>',
 ];
 

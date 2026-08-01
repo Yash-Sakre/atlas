@@ -57,6 +57,13 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     desc: 'Every npm package you declare, with the installed version, how many files import it, and a live update check from the registry.',
     isNew: true,
   },
+  {
+    id: 'static-assets',
+    name: 'Static assets',
+    icon: '🖼️',
+    desc: 'Images, vectors, fonts, media and PDFs previewed from their real path on disk — with size, intrinsic dimensions, the URL public/ files are served at, and every reference from code, CSS and markup.',
+    isNew: true,
+  },
 ];
 
 export type OutputFile = {
@@ -73,8 +80,9 @@ export const OUTPUT_FILES: OutputFile[] = [
   { file: 'routes.json', desc: 'Routes resolved per router kind, with their components and path params.' },
   { file: 'graph.json', desc: 'The dependency graph — nodes plus imports / renders / uses / provides edges.' },
   { file: 'dead-code.json', desc: 'Unused exports, orphan files and duplicate candidates.' },
-  { file: 'architecture.json', desc: 'Folder structure, module boundaries, the shared layer and boundary violations.', isNew: true },
+  { file: 'architecture.json', desc: 'Folder structure, module boundaries, the shared layer and boundary violations.' },
   { file: 'dependencies.json', desc: 'Declared npm packages with kind, resolved version, install source and import counts.', isNew: true },
+  { file: 'static-assets.json', desc: 'Static files on disk with kind, size, dimensions, public URL and the places that reference them.', isNew: true },
   { file: 'search.json', desc: 'The prebuilt fuzzy-search index used by `atlas search` and the dashboard.' },
   { file: 'analysis.json', desc: 'The full snapshot every other command reads back from.' },
 ];

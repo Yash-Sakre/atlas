@@ -20,8 +20,8 @@ export default function Landing() {
           <p className="sub">
             One scan maps every reusable asset across your React / Next.js / Vite / TypeScript codebase —
             components, hooks, utilities, contexts, stores &amp; routes — plus your{' '}
-            <b>npm inventory</b>, <b>architecture</b> and the code nothing uses any more. Detected by{' '}
-            <b>AST semantics</b>, never by folder names.
+            <b>npm inventory</b>, <b>static assets</b>, <b>architecture</b> and the code nothing uses any
+            more. Detected by <b>AST semantics</b>, never by folder names.
           </p>
           <div className="actions">
             <CommandBox command={INSTALL_CMD} />
@@ -83,7 +83,7 @@ store    cartStore      → zustand · create()`}
             <div className="tile t-2 spotlight sp-violet">
               <div className="ico">🗺️</div>
               <h3>Interactive dashboard</h3>
-              <p>Seven views over one scan — search, asset detail, routes, graph, dependencies, dead code.</p>
+              <p>Eight views over one scan — search, asset detail, routes, graph, dependencies, static assets, dead code.</p>
             </div>
             <div className="tile t-2">
               <div className="ico">🔗</div>
@@ -104,15 +104,27 @@ store    cartStore      → zustand · create()`}
               </p>
             </div>
 
-            <div className="tile t-4 t-wide-sm spotlight sp-magenta">
+            <div className="tile t-3 t-wide-sm spotlight sp-magenta">
               <span className="tag-new">New</span>
               <div className="ico">📦</div>
               <h3>Every dependency, accounted for</h3>
               <p>
                 Each package you declare, with the version actually installed, how many files import it, and
                 a live update check against the registry. Local <code>file:</code>, <code>workspace:</code>{' '}
-                and git installs are labelled as such instead of being guessed at — so “is this still used?”
-                and “what's behind?” are one screen, not an afternoon.
+                and git installs are labelled as such instead of guessed at — so “is this still used?” and
+                “what's behind?” are one screen, not an afternoon.
+              </p>
+            </div>
+
+            <div className="tile t-3 t-wide-sm spotlight sp-coral">
+              <span className="tag-new">New</span>
+              <div className="ico">🖼️</div>
+              <h3>Static assets, not just source</h3>
+              <p>
+                Every image, font, media clip and PDF you ship — with its size, the dimensions read straight
+                from the file header, and every reference from code, stylesheets and markup. Previews stream
+                from the real path on disk, so nothing leaves your project. The 4&nbsp;MB hero nobody imports
+                shows up on the first scan.
               </p>
             </div>
 
@@ -124,7 +136,7 @@ store    cartStore      → zustand · create()`}
                 concrete recommendation.
               </p>
             </div>
-            <div className="tile t-3 t-wide-sm">
+            <div className="tile t-2">
               <div className="ico">🗂️</div>
               <h3>Monorepo aware</h3>
               <p>
@@ -132,7 +144,7 @@ store    cartStore      → zustand · create()`}
                 workspace, including split <code>tsconfig</code> setups.
               </p>
             </div>
-            <div className="tile t-3 t-wide-sm">
+            <div className="tile t-2">
               <div className="ico">🫧</div>
               <h3>Self-contained</h3>
               <p>
@@ -149,7 +161,7 @@ store    cartStore      → zustand · create()`}
         <div className="wrap">
           <div className="sec-head">
             <span className="eyebrow">The dashboard</span>
-            <h2>Seven views. One scan. No config.</h2>
+            <h2>Eight views. One scan. No config.</h2>
             <p className="lead">
               <code>atlas serve</code> analyzes the project and opens a local React app. Every view reads the
               same snapshot, so nothing is ever stale relative to anything else.
