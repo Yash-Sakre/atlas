@@ -14,7 +14,6 @@ import {
   type FunctionExpression,
   type JSDocableNode,
   type NamedNode,
-  type SourceFile,
   type Type,
   type VariableDeclaration,
 } from 'ts-morph';
@@ -188,18 +187,4 @@ export function unwrapHocCalls(node: Node): { inner: Node; hoc: string[] } {
     break;
   }
   return { inner: current, hoc };
-}
-
-/** All exported declarations in a file with name + node, including re-exports. */
-export function getExportedDeclarations(file: SourceFile): Array<{ name: string; node: Node }> {
-  const out: Array<{ name: string; node: Node }> = [];
-  for (const [name, decls] of file.getExportedDeclarations()) {
-    for (const decl of decls) {
-      // Only keep declarations physically located in this file.
-      if (decl.getSourceFile().getFilePath() === file.getFilePath()) {
-        out.push({ name, node: decl });
-      }
-    }
-  }
-  return out;
 }

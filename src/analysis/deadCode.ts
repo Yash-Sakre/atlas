@@ -4,13 +4,12 @@ import type {
   DeadCodeReport,
   DeadExport,
   DuplicateCandidate,
-  ExtractionContext,
   RouteAsset,
 } from '../core/types';
 
 const ENTRY_BASENAMES = /(?:^|\/)(main|index|app|_app|_document|root|server|middleware)\.(t|j)sx?$/i;
 
-export function analyzeDeadCode(assets: Asset[], routes: RouteAsset[], ctx: ExtractionContext): DeadCodeReport {
+export function analyzeDeadCode(assets: Asset[], routes: RouteAsset[]): DeadCodeReport {
   const routeComponentNames = new Set(
     routes.map((r) => r.componentName).filter((n): n is string => Boolean(n)),
   );

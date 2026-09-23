@@ -118,25 +118,10 @@ mark {
   background-clip: padding-box;
 }
 
-/* ---- Third-party internals (recharts / reactflow render these, not us) ---- */
+/* ---- Third-party internals (recharts renders these, not us) ---- */
 .recharts-surface:focus,
 .recharts-wrapper:focus,
 .recharts-tooltip-wrapper {
   outline: none;
 }
 
-.react-flow__attribution {
-  background: transparent !important;
-  color: var(--color-ink-faint) !important;
-  font-size: 10px;
-}
-
-.react-flow__handle {
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  min-width: 0;
-  min-height: 0;
-  border: none;
-  background: transparent;
-}

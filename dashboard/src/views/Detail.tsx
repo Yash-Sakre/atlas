@@ -3,10 +3,6 @@ import type { Asset, Description, Param, UsageRef } from '../types';
 import { useData } from '../data';
 import { EditorLink, SourceBadge, Tag, TypeBadge } from '../ui';
 
-function pluralize(n: number, word: string) {
-  return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
 function ParamsTable({ rows, kind }: { rows?: Param[]; kind: string }) {
   if (!rows || !rows.length) return <p className="text-sm text-ink-muted">No {kind}.</p>;
   return (

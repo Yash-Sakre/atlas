@@ -6,6 +6,9 @@ dashboard/node_modules/
 dist/
 dashboard/dist/
 
+# Local dev data for the dashboard (see docs/development.md)
+dashboard/public/data.json
+
 # Atlas analysis output & per-user cache
 .atlas/
 .atlas-cache/

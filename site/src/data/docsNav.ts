@@ -64,7 +64,7 @@ export const DOCS_GROUPS: DocsGroup[] = [
         title: 'Views',
         summary: 'What each of the eight dashboard views shows you.',
         keywords:
-          'overview assets detail routes tree dead code dependencies static assets images fonts media preview serve export',
+          'overview assets detail routes dead code dependencies static assets images fonts media preview serve export',
         isNew: true,
       },
     ],

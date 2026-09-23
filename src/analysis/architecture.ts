@@ -94,7 +94,7 @@ function buildFolderTree(assets: Asset[]): FolderNode {
 
   for (const a of assets) {
     const parts = a.path.split('/');
-    const fileName = parts.pop()!;
+    parts.pop(); // drop the file name, keep the folders
     let node = root;
     let acc = '';
     node.assetCount++;

@@ -78,7 +78,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   const graph = buildGraph(assets);
 
   phase('Detecting dead code');
-  const deadCode = analyzeDeadCode(assets, routes, ctx);
+  const deadCode = analyzeDeadCode(assets, routes);
 
   phase('Analyzing architecture');
   const architecture = analyzeArchitecture(assets, config);

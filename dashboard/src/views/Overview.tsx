@@ -67,7 +67,6 @@ function formatTime(iso: string): string {
 export default function Overview() {
   const data = useData();
   const s = data.stats;
-  const fw = data.meta.framework;
 
   const [query, setQuery] = useState('');
   const search = useSearch(data.search || [], ['name']);
@@ -76,14 +75,6 @@ export default function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [query, data.search],
   );
-
-  const fwTags = [
-    fw.react && 'React',
-    fw.next && `Next.js (${fw.nextRouter})`,
-    fw.vite && 'Vite',
-    fw.reactRouter && 'React Router',
-    ...(fw.stateLibs || []),
-  ].filter(Boolean) as string[];
 
   const counts = CARDS.map((c) => (s as unknown as Record<string, number>)[c.key] || 0);
   const totalAssets = counts.reduce((a, b) => a + b, 0);

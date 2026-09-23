@@ -186,5 +186,3 @@ export function detectWorkspaces(root: string): { name: string; path: string }[]
   }
   return result;
 }
-
-export const constants = { DEFAULT_INCLUDE, DEFAULT_EXCLUDE };

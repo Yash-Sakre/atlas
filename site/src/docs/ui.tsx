@@ -83,26 +83,8 @@ export function H2({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
-export function H3({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <h3 className="doc-h doc-h3" id={id} data-toc="3">
-      {children}
-      <AnchorLink id={id} />
-    </h3>
-  );
-}
-
-/** Small uppercase label for sub-blocks that don't deserve a TOC entry. */
-export function Label({ children }: { children: ReactNode }) {
-  return <p className="doc-label">{children}</p>;
-}
-
 export function P({ children }: { children: ReactNode }) {
   return <p className="doc-p">{children}</p>;
-}
-
-export function Lead({ children }: { children: ReactNode }) {
-  return <p className="doc-lead">{children}</p>;
 }
 
 /* -------------------------------- tables --------------------------------- */
@@ -183,10 +165,6 @@ export function Callout({
 }
 
 /* --------------------------------- lists --------------------------------- */
-
-export function Bullets({ children }: { children: ReactNode }) {
-  return <ul className="doc-bullets">{children}</ul>;
-}
 
 /** Numbered step with a heading — used by the quickstart. */
 export function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {

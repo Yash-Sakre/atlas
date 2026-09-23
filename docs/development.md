@@ -75,8 +75,15 @@ npm install
 npm run dev                  # vite dev server
 ```
 
-Views: Overview · Components · Hooks · Utils · Contexts · Routes · Dependency Tree
-(ReactFlow). Source under `dashboard/src/views/`.
+In dev mode the app fetches `dashboard/public/data.json` (git-ignored). Generate it
+from any project, e.g. the bundled sample:
+
+```bash
+npm run analyze -- examples/sample-app
+cp examples/sample-app/.atlas/analysis.json dashboard/public/data.json
+```
+
+Source for each view lives under `dashboard/src/views/`.
 
 ## Extending Atlas — plugins
 

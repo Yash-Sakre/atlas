@@ -5,7 +5,7 @@
  * NOT claim — i.e. it does not render JSX (not a component) and is not named
  * `use*` (not a hook). Kind is inferred from the signature, never the path.
  */
-import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
+import { Node, type SourceFile } from 'ts-morph';
 import type { Extractor, ExtractionContext, UtilAsset, UtilKind } from '../core/types';
 import { rel } from '../core/project';
 import {

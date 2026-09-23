@@ -39,12 +39,6 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     desc: 'The route table for React Router, TanStack Router and the Next.js app / pages routers — including data-router config arrays.',
   },
   {
-    id: 'tree',
-    name: 'Dependency tree',
-    icon: '🔗',
-    desc: 'Walk the import / render / uses graph from any asset, in both directions.',
-  },
-  {
     id: 'dead-code',
     name: 'Dead code',
     icon: '🧹',
