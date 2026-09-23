@@ -1,0 +1,31 @@
+---
+title: atlas dead-code
+description: Find unused exports, orphans and duplicates.
+icon: Eraser
+---
+
+```bash title="Usage"
+atlas dead-code [root] [options]
+```
+
+## Overview
+
+Reports exports nothing imports, files no one references, and likely duplicate implementations — the
+three biggest sources of bloat in a frontend. Great as a pre-cleanup pass or a CI gate with `--json`.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
+| `--json` | | Output the report as JSON instead of a formatted table. |
+
+## Examples
+
+```bash
+atlas dead-code
+
+# Machine-readable output for CI
+atlas dead-code --json
+```

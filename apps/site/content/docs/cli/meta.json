@@ -1,0 +1,4 @@
+{
+  "title": "CLI reference",
+  "pages": ["serve", "analyze", "export", "graph", "dead-code", "search", "describe", "watch", "options"]
+}

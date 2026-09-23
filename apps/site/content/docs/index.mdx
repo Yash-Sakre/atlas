@@ -1,0 +1,98 @@
+---
+title: Quickstart
+description: Point Atlas at a frontend project and it maps every reusable asset, the dependency graph, your npm inventory and everything nothing uses any more — in one command, with nothing to configure.
+icon: Rocket
+---
+
+## Run it
+
+Atlas needs Node 20 or newer and a React / Next.js / Vite / TypeScript project. There is nothing to
+install and nothing to sign up for — the whole analysis runs locally.
+
+<Steps>
+<Step>
+
+### Scan and open the dashboard
+
+From your project root, run the one command that does everything: analyze, cache, serve, open.
+
+```bash
+npx codebase-atlas serve
+```
+
+</Step>
+<Step>
+
+### Start with Overview
+
+The dashboard opens on **Overview**: asset counts, the framework and routers Atlas detected, and your
+most-reused assets. It's the fastest read on the shape of an unfamiliar codebase.
+
+</Step>
+<Step>
+
+### Search before you build
+
+Hit the search field and type what you're about to write — `modal`, `debounce`, `formatCurrency`.
+Every component, hook, util, context, store and route is indexed by name, path and signature. From the
+terminal, the same index is one command away:
+
+```bash
+atlas search modal
+```
+
+</Step>
+<Step>
+
+### Clean up what nothing uses
+
+**Dead code** lists exports nothing imports, files no one references, and likely duplicate
+implementations. It's the cheapest cleanup pass you'll run all quarter.
+
+```bash
+atlas dead-code
+```
+
+</Step>
+<Step>
+
+### Share it with the team
+
+`atlas export` writes a self-contained static bundle — the dashboard plus a data snapshot — that you
+can host on GitHub Pages, Netlify, S3 or an internal box.
+
+```bash
+atlas export --out-dir ../atlas-site
+```
+
+</Step>
+</Steps>
+
+<Callout type="idea" title="Keep it fresh">
+  Run `atlas watch` alongside your dev server and the analysis re-runs incrementally as you edit. The
+  cache means later runs only touch files that actually changed.
+</Callout>
+
+## Try it on the demo app
+
+The repository ships a small sample app with every asset kind in it:
+
+```bash
+git clone https://github.com/Yash-Sakre/atlas.git
+npx codebase-atlas serve --root atlas/packages/cli/examples/sample-app
+```
+
+## What you get
+
+Every run writes a plain-JSON snapshot to `.atlas/` — see the [output reference](/docs/outputs).
+Nothing is uploaded, no API keys are needed, and descriptions are generated offline from real AST
+facts. If you want richer prose, [hand the assets to a coding agent](/docs/cli/describe) on purpose.
+
+## Where to go next
+
+<Cards>
+  <Card title="CLI reference" href="/docs/cli/serve" description="Every command, flag and example." />
+  <Card title="Dashboard views" href="/docs/dashboard" description="What each of the eight views is for." />
+  <Card title="Analysis outputs" href="/docs/outputs" description="Every file written to .atlas/." />
+  <Card title="Configuration" href="/docs/configuration" description="Only if the defaults don't fit." />
+</Cards>

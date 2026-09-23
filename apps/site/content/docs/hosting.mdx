@@ -1,0 +1,111 @@
+---
+title: Hosting & deployment
+description: The dashboard is a static React app that reads a single data.json at runtime — serve it locally, or export it and deploy it to any static host.
+icon: CloudUpload
+---
+
+## Serve locally
+
+The quickest way. [`atlas serve`](/docs/cli/serve) analyzes, caches under `~/.atlas/`, and serves at a
+local link.
+
+```bash
+atlas serve                  # http://localhost:4321
+atlas serve --port 8080
+atlas serve --no-open        # print the link, don't open a browser
+atlas serve --reanalyze      # force a fresh scan
+```
+
+## Export a static bundle
+
+[`atlas export`](/docs/cli/export) produces a self-contained folder: the dashboard assets plus a
+`data.json` snapshot. The app fetches `./data.json` at runtime, so the bundle is fully static — no
+server logic required.
+
+```bash
+atlas export --out-dir ~/atlas-site
+```
+
+```txt title="~/atlas-site/"
+~/atlas-site/
+├─ index.html
+├─ assets/        # JS/CSS bundles
+└─ data.json      # the analysis snapshot
+```
+
+Preview it locally with any static server:
+
+```bash
+npx serve ~/atlas-site
+```
+
+## Deploy it
+
+Because the bundle is static and uses **hash-based routing**, it works on any static host with no
+SPA-rewrite configuration.
+
+<Tabs items={['Netlify', 'Vercel', 'GitHub Pages', 'AWS S3', 'nginx']}>
+<Tab value="Netlify">
+
+```bash
+netlify deploy --dir ~/atlas-site --prod
+```
+
+</Tab>
+<Tab value="Vercel">
+
+```bash
+vercel deploy ~/atlas-site --prod
+```
+
+</Tab>
+<Tab value="GitHub Pages">
+
+```bash
+# copy the bundle into a gh-pages branch / docs folder and push
+cp -r ~/atlas-site/* ./docs-site/
+git add docs-site && git commit -m "Publish Atlas dashboard"
+# then enable Pages on that folder/branch in repo settings
+```
+
+</Tab>
+<Tab value="AWS S3">
+
+```bash
+aws s3 sync ~/atlas-site s3://my-bucket --delete
+# enable static website hosting on the bucket; index document = index.html
+```
+
+</Tab>
+<Tab value="nginx">
+
+```nginx
+server {
+  listen 80;
+  root /var/www/atlas-site;
+  index index.html;
+  # hash routing means no try_files rewrite is required, but it's harmless:
+  location / { try_files $uri $uri/ /index.html; }
+}
+```
+
+</Tab>
+</Tabs>
+
+Any container or CI works too: the bundle is just static files — serve them with `npx serve`,
+`python -m http.server`, Caddy, or copy them into any web server's root.
+
+## Keeping it fresh
+
+`data.json` is a point-in-time snapshot. To update a deployed site, re-run
+`atlas export --reanalyze` and redeploy the folder — for example as a CI step on merge to `main`.
+
+## Where data lives
+
+| Location | Written by | Commit it? |
+| --- | --- | --- |
+| `.atlas/` in your repo | `analyze` | Optional — these are JSON reports. |
+| `~/.atlas/cache/<hash>/` | `serve`, `export` | No — per-user cache outside the repo. |
+| `<out-dir>/` from `export` | `export` | This is your deployable artifact. |
+
+`serve` and `export` never write into the scanned project. Only `analyze` does.

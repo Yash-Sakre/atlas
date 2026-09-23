@@ -1,0 +1,38 @@
+---
+title: atlas search
+description: Fuzzy-search every discovered asset.
+icon: Search
+---
+
+```bash title="Usage"
+atlas search <query> [options]
+```
+
+## Overview
+
+Searches across all detected components, hooks, utilities, contexts, stores and routes by name, path and
+signature (powered by Fuse.js). Find out whether something already exists before you build it again.
+
+```txt title="Output"
+● AuthContext   [context]
+● AuthProvider  [component]
+● useAuth       [hook]
+● LoginScreen   [component]
+```
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to search. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory containing analysis output. |
+| `-n, --limit <n>` | `20` | Maximum number of results to return. |
+| `--json` | | Output matches as JSON. |
+
+## Examples
+
+```bash
+atlas search authentication
+atlas search "format date" --limit 5
+atlas search useAuth --json
+```

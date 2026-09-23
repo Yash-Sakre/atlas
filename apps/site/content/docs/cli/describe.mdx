@@ -1,0 +1,59 @@
+---
+title: atlas describe
+description: Generate richer docs — with or without an AI agent.
+icon: Sparkles
+---
+
+```bash title="Usage"
+atlas describe [root] [options]
+```
+
+## Overview
+
+Atlas writes accurate, offline descriptions for every asset by default. Run `describe` to regenerate
+them, or hand the assets (with their AST context) to a coding agent like Claude, Codex or Cursor for
+richer prose, then fold the results back into the analysis.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--agent <name>` | | Agent to hand off to: `claude` \| `codex` \| `cursor`. |
+| `--apply` | | Fold an agent's `descriptions.json` back into the analysis. |
+| `--heuristic` | | Regenerate the offline heuristic descriptions instead of using an agent. |
+| `--no-run` | | Write the hand-off packet but do not invoke the agent. |
+| `--copy` | | Copy the agent instruction to the clipboard for a manual paste. |
+| `--no-cache` | | Disable the incremental cache. |
+| `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
+
+## The hand-off packet
+
+Without `--agent`, `describe` writes a packet and prints the commands to run it with each agent. The
+packet lives under `.atlas/handoff/`:
+
+```txt
+.atlas/handoff/
+├─ PROMPT.md          # instructions + the exact answer schema for the agent
+├─ assets.json        # every asset's id, kind, signature, props/params, usage
+└─ descriptions.json  # ← the agent writes this (one rich description per id)
+```
+
+Each agent-authored description is tagged with its `source` (`claude` / `codex` / `cursor`); assets the
+agent skips keep their heuristic description as a fallback.
+
+## Examples
+
+```bash
+# Regenerate offline descriptions, no network
+atlas describe --heuristic
+
+# Run an agent end to end
+atlas describe --agent claude
+
+# Fold the agent output back in
+atlas describe --agent claude --apply
+
+# Write the packet but don't invoke the agent
+atlas describe --agent codex --no-run
+```

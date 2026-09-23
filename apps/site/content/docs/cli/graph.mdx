@@ -1,0 +1,31 @@
+---
+title: atlas graph
+description: Print the dependency graph.
+icon: Network
+---
+
+```bash title="Usage"
+atlas graph [root] [options]
+```
+
+## Overview
+
+Renders how assets depend on one another. By default it prints a readable ASCII tree to the terminal;
+pass `--json` to emit the raw graph for piping into other tooling or your own visualizations.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
+| `--json` | | Output the graph as JSON instead of an ASCII tree. |
+
+## Examples
+
+```bash
+# Print the dependency tree
+atlas graph
+
+atlas graph --json > graph.json
+```

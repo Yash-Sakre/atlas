@@ -1,0 +1,23 @@
+{
+  "name": "@codebase-atlas/schema",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Type definitions for the Atlas analysis output, shared by the CLI and the dashboard.",
+  "license": "MIT",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

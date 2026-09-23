@@ -1,0 +1,37 @@
+---
+title: atlas export
+description: Write a hostable static dashboard bundle.
+icon: PackageOpen
+---
+
+```bash title="Usage"
+atlas export [root] [options]
+```
+
+## Overview
+
+Produces a self-contained static build of the dashboard (the app plus a `data.json` snapshot) in an
+external folder. Deploy it to GitHub Pages, Netlify, S3, or any static host to share a read-only map of
+your codebase with the whole team.
+
+<Callout type="warn">
+  The destination must be **outside** the scanned project — Atlas refuses to write into the codebase it
+  analyzed.
+</Callout>
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze (or pass it positionally). |
+| `-o, --out-dir <dir>` | `~/.atlas/cache/<hash>/site` | Destination folder for the bundle. Must be outside the project. |
+| `--reanalyze` | | Ignore cached analysis and re-scan before exporting. |
+
+## Examples
+
+```bash
+atlas export --out-dir ../atlas-site
+atlas export ./apps/web -o /tmp/web-atlas --reanalyze
+```
+
+See [Hosting & deployment](/docs/hosting) for deploy targets.

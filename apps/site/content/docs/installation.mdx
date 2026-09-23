@@ -1,0 +1,48 @@
+---
+title: Installation
+description: Atlas is a single CLI published to npm as codebase-atlas. Run it on demand with npx, or install it globally if you use it every day.
+icon: Download
+---
+
+## Run without installing
+
+The fastest path — `npx` fetches the package, analyzes the current project and opens the dashboard.
+
+```bash
+npx codebase-atlas serve
+```
+
+## Install globally
+
+Installing globally gives you the `atlas` binary directly, which is worth it once you're running it
+across several repos.
+
+```bash
+npm i -g codebase-atlas
+atlas serve
+```
+
+## Add it to a project
+
+You can also keep it as a dev dependency so the whole team runs the same version — useful when you wire
+`atlas analyze` into CI.
+
+```bash
+npm i -D codebase-atlas
+npx atlas analyze
+```
+
+## Requirements
+
+- **Node 20 or newer.** Atlas relaunches itself with a larger V8 heap on big repos, so full type-aware
+  scans don't run out of memory.
+- **A TypeScript or JavaScript frontend.** React, Next.js (app or pages router), Vite, React Router and
+  TanStack Router are all detected automatically.
+- **Nothing else.** No config file, no API key, no network access — see
+  [Configuration](/docs/configuration) only if the defaults don't fit your layout.
+
+<Callout title="What it writes">
+  `atlas analyze` writes its output and the incremental cache to `.atlas/` in the project root. Add that
+  folder to `.gitignore` unless you deliberately want to diff snapshots in version control. `serve` and
+  `export` write nothing into the project — they cache under `~/.atlas/`.
+</Callout>

@@ -1,0 +1,60 @@
+---
+title: Analysis outputs
+description: Every command that analyzes writes this file set to --out-dir, which defaults to .atlas/ in the project root. It's plain JSON — diff it, gate CI on it, or feed it to your own tooling.
+icon: FileBraces
+---
+
+## Folder layout
+
+```txt title=".atlas/"
+.atlas/
+├─ .cache/            incremental analysis cache
+├─ analysis.json      full snapshot (everything below, combined)
+├─ components.json    hooks.json  utils.json  contexts.json  routes.json
+├─ graph.json         dead-code.json  architecture.json
+├─ dependencies.json  static-assets.json
+└─ search.json
+```
+
+<Callout title="Commit it or ignore it">
+  Add `.atlas/` to `.gitignore` for the normal case. Checking the snapshot in is a deliberate choice — it
+  makes "what did this PR add to the codebase?" a reviewable diff.
+</Callout>
+
+## Files
+
+| File | Contents |
+| --- | --- |
+| `components.json` | Every detected component with props, component kind and source location. |
+| `hooks.json` | Custom hooks with parameters, return shape and the hooks they call. |
+| `utils.json` | Utilities classified as function, validator, formatter, helper or constant. |
+| `contexts.json` | React contexts and state stores (Redux, Zustand, Jotai, MobX, …). |
+| `routes.json` | Routes resolved per router kind, with their components and path params. |
+| `graph.json` | The dependency graph — nodes plus imports / renders / uses / provides edges. |
+| `dead-code.json` | Unused exports, orphan files and duplicate candidates. |
+| `architecture.json` | Folder structure, module boundaries, the shared layer and boundary violations. |
+| `dependencies.json` | Declared npm packages with kind, resolved version, install source and import counts. |
+| `static-assets.json` | Static files on disk with kind, size, dimensions, public URL and the places that reference them. |
+| `search.json` | The prebuilt fuzzy-search index used by `atlas search` and the dashboard. |
+| `analysis.json` | The full snapshot every other command reads back from. |
+
+The TypeScript types for every one of these shapes live in the
+[`@codebase-atlas/schema`](https://github.com/Yash-Sakre/atlas/tree/main/packages/schema) package in
+the repo.
+
+## Cache
+
+The incremental cache lives in `.atlas/.cache/` and keys on file contents plus the Atlas version, so a
+tool upgrade invalidates it automatically. `--no-cache` skips it for one run; `--reanalyze` forces a
+genuinely fresh scan before serving or exporting.
+
+## Using it in CI
+
+[`atlas analyze`](/docs/cli/analyze) serves nothing and opens nothing, which makes it the right command
+for automation. The reporting commands also take `--json`, so you can gate a pipeline on dead code or
+graph shape without parsing terminal output.
+
+```bash title="ci step"
+# fail the build if anything new goes unused
+npx codebase-atlas dead-code --json > dead-code.json
+```

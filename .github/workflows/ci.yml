@@ -18,20 +18,24 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Also builds @codebase-atlas/schema (root postinstall).
       - name: Install dependencies
         run: npm ci
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build CLI
+      - name: Build schema, dashboard & CLI
         run: npm run build
-
-      - name: Build dashboard
-        run: npm run build:dashboard
 
       - name: Test
         run: npm test
 
       - name: Smoke test the CLI
-        run: node dist/index.js analyze examples/sample-app --no-cache
+        run: node packages/cli/dist/index.js analyze packages/cli/examples/sample-app --no-cache
+
+      - name: Check the npm tarball
+        run: npm pack --dry-run -w codebase-atlas
+
+      - name: Build site
+        run: npm run build:site

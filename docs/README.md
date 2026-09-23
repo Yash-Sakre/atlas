@@ -1,41 +1,22 @@
-# Atlas — Documentation
+# Atlas — Contributor docs
 
-**Atlas** (`codebase-atlas`) scans a React / Next.js / Vite / TypeScript codebase
-and automatically **discovers, analyzes, and documents every reusable asset** —
-components, hooks, utilities, contexts/stores, and routes — so a developer can see
-what already exists *before* writing new code.
+**Using Atlas?** The user documentation — quickstart, every CLI command and
+flag, configuration, dashboard views, outputs and hosting — lives on the site:
+**https://yash-sakre.github.io/atlas/docs/** (source:
+[`apps/site/content/docs`](../apps/site/content/docs)).
 
-Everything is detected by **AST semantics, never folder names**, using
-[`ts-morph`](https://ts-morph.com). The output is JSON plus an interactive React
-dashboard you can serve locally or deploy as a static site.
-
-## Documentation index
+This folder is for people working **on** Atlas.
 
 | Doc | What's inside |
 | --- | --- |
-| [Architecture](architecture.md) | How the project is structured and how the analysis pipeline works end to end. |
-| [Commands](commands.md) | Full CLI reference — every command, flag, and example. |
-| [Hosting & Deployment](hosting.md) | How to serve locally and deploy the dashboard to any static host. |
-| [Development](development.md) | Build, test, and extend Atlas (plugin system). |
-
-## 30-second start
-
-```bash
-# Analyze the current project and open the dashboard in your browser
-npx codebase-atlas serve
-
-# Try it against the bundled demo app
-npx codebase-atlas serve --root examples/sample-app
-```
-
-Nothing is written into your codebase — analysis is cached under `~/.atlas/`.
+| [Architecture](architecture.md) | How the analyzer is structured and how the pipeline works end to end. |
+| [Development](development.md) | The monorepo layout; build, test, run the site, publish, and extend Atlas. |
 
 ## Key facts at a glance
 
-- **Package name:** `codebase-atlas` · **Binary:** `atlas`
-- **Runtime:** Node.js `>=18`, CommonJS
-- **Language:** TypeScript (compiled to `dist/` via `tsc`)
-- **Dashboard:** React + Vite + Tailwind app in [`dashboard/`](../dashboard) (ships prebuilt in `dashboard/dist`)
+- **Package name:** `codebase-atlas` · **Binary:** `atlas` · source in [`packages/cli`](../packages/cli)
+- **Runtime:** Node.js `>=20`, CommonJS
+- **Output types:** [`@codebase-atlas/schema`](../packages/schema), shared by the CLI and the dashboard
+- **Dashboard:** React + Vite + Tailwind app in [`packages/dashboard`](../packages/dashboard), bundled into the CLI when it's packed
+- **Website:** Next.js + Fumadocs in [`apps/site`](../apps/site)
 - **No network / no API keys** required — descriptions are generated offline by default.
-</content>
-</invoke>

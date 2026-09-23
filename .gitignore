@@ -1,13 +1,23 @@
 # Dependencies
 node_modules/
-dashboard/node_modules/
 
-# Build output (rebuilt via `npm run build:all` / CI / prepublishOnly)
+# Build output (rebuilt via `npm run build` / CI / prepublishOnly)
 dist/
-dashboard/dist/
+*.tsbuildinfo
 
-# Local dev data for the dashboard (see docs/development.md)
-dashboard/public/data.json
+# Copied into the CLI package at pack time (see packages/cli/scripts/pack-assets.mjs)
+packages/cli/dashboard/
+packages/cli/README.md
+packages/cli/LICENSE
+
+# Local dev data for the dashboard (see the Development docs)
+packages/dashboard/public/data.json
+
+# Website (Next.js / Fumadocs)
+apps/site/.next/
+apps/site/out/
+apps/site/.source/
+apps/site/next-env.d.ts
 
 # Atlas analysis output & per-user cache
 .atlas/

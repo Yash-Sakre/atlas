@@ -1,0 +1,33 @@
+{
+  "name": "codebase-atlas-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "serve out",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "fumadocs-core": "16.15.13",
+    "fumadocs-mdx": "15.4.3",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@16.15.13",
+    "lucide-react": "^1.47.0",
+    "next": "16.3.5",
+    "next-themes": "^0.4.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/mdx": "^2.0.14",
+    "@types/node": "^26.6.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.28",
+    "serve": "^14.2.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
+  },
+  "description": "Landing page and documentation for Atlas, built with Fumadocs."
+}

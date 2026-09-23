@@ -2,27 +2,29 @@
 
 Atlas is a CLI tool with two parts:
 
-1. **The analyzer** (Node/TypeScript in [`src/`](../src)) — scans a codebase and
+1. **The analyzer** (Node/TypeScript in [`packages/cli/src/`](../packages/cli/src)) — scans a codebase and
    produces a single `AnalysisResult` JSON object.
-2. **The dashboard** (React/Vite in [`dashboard/`](../dashboard)) — renders that
+2. **The dashboard** (React/Vite in [`packages/dashboard/`](../packages/dashboard)) — renders that
    JSON as an interactive UI.
 
 The two are decoupled: the analyzer emits data, the dashboard consumes it (either
-live over HTTP at `/data.json`, or from a bundled `data.json` file).
+live over HTTP at `/data.json`, or from a bundled `data.json` file). The shape of
+that data is defined once, in [`packages/schema`](../packages/schema), and both
+sides compile against it.
 
 ---
 
 ## Source layout
 
 ```
-src/
+packages/cli/src/
 ├─ index.ts          # bin entry → builds and runs the CLI
 ├─ cli/
 │  ├─ index.ts       # commander program: defines every command + flags
 │  ├─ loadResult.ts  # shared helper to load/produce an analysis for a command
 │  └─ commands/      # one file per command (analyze, serve, export, …)
 ├─ core/
-│  ├─ types.ts       # the data contract (Asset, AnalysisResult, Config, Plugin…)
+│  ├─ types.ts       # re-exports @codebase-atlas/schema + Config, Extractor, Plugin
 │  ├─ config.ts      # config load + framework + workspace detection
 │  ├─ project.ts     # loads files into a ts-morph Project (the ExtractionContext)
 │  └─ analyzer.ts    # the orchestrator — runs the whole pipeline
@@ -35,14 +37,15 @@ src/
 ├─ plugins/          # plugin loader
 └─ utils/            # logger · incremental cache · hashing · progress · clipboard
 
-dashboard/           # React + Vite dashboard (prebuilt into dashboard/dist)
+packages/schema/     # the data contract (Asset, AnalysisResult, reports…)
+packages/dashboard/  # React + Vite dashboard (built into packages/dashboard/dist)
 ```
 
 ---
 
 ## The analysis pipeline
 
-The whole flow lives in [`src/core/analyzer.ts`](../src/core/analyzer.ts) →
+The whole flow lives in [`packages/cli/src/core/analyzer.ts`](../packages/cli/src/core/analyzer.ts) →
 `runAnalysis(config, hooks)`. Phases run in order:
 
 ```
@@ -125,7 +128,7 @@ inputs/outputs, when-to-use / when-not, examples, improvements).
   — no API key, no network, no cost.
 - **Optional:** `ai/handoff.ts` + `ai/agents.ts` build a packet for a coding agent
   (Claude / Codex / Cursor) to write richer descriptions, folded back in via
-  `describe --apply`. See [Commands](commands.md#describe).
+  `describe --apply`. See the [`describe` docs](https://yash-sakre.github.io/atlas/docs/cli/describe/).
 
 ### 9. Search index — `search/searchIndex.ts`
 Builds a Fuse.js index over all assets for fuzzy search.
@@ -174,13 +177,13 @@ There are two paths, and **neither writes into the scanned project**:
                                          │
               serve ───────────┐         ├──────────► export
        (HTTP server,           │         │       (static bundle,
-        getData → /data.json)  ▼         ▼        copies dashboard/dist
+        getData → /data.json)  ▼         ▼        copies the dashboard
                         cached at ~/.atlas/        + writes data.json)
                         cache/<hash>/analysis.json
 ```
 
 - **`serve`** (`serve/server.ts`): a dependency-free Node `http` server. It serves
-  `dashboard/dist` and exposes the live analysis JSON at `/data.json` (with an SPA
+  the dashboard build and exposes the live analysis JSON at `/data.json` (with an SPA
   fallback to `index.html` for hash routing). If the preferred port is busy it
   falls back to an OS-assigned free port. Best-effort opens the browser.
   It also streams the project's own static files under `/__file/<relative-path>`,

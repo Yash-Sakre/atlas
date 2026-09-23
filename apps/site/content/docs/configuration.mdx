@@ -1,0 +1,103 @@
+---
+title: Configuration
+description: Atlas is zero-config by design — every key here is optional. Reach for a config file only when the defaults don't match your layout.
+icon: Settings2
+---
+
+## Where config lives
+
+Atlas looks for the first of these in the project root: `atlas.config.json`, `.atlasrc`,
+`.atlasrc.json`, or an `"atlas"` key in `package.json`. CLI flags always win over the config file.
+
+```json title="atlas.config.json"
+{
+  "include": ["src/**/*.{ts,tsx}"],
+  "exclude": ["**/*.stories.tsx"],
+  "outDir": ".atlas",
+  "sharedLayers": ["shared", "common", "ui"]
+}
+```
+
+```json title="package.json"
+{
+  "name": "my-app",
+  "atlas": {
+    "exclude": ["src/legacy/**"]
+  }
+}
+```
+
+## Keys
+
+<TypeTable
+  type={{
+    include: {
+      type: 'string[]',
+      description: 'Globs to scan, relative to the project root.',
+      default: '["**/*.{ts,tsx,js,jsx,mjs,cjs}"]',
+    },
+    exclude: {
+      type: 'string[]',
+      description:
+        'Extra globs to skip. They are added to the built-in excludes (node_modules, build output, declaration files, tests and stories), never replace them.',
+    },
+    cache: {
+      type: 'boolean',
+      description: 'Enable the incremental cache. It is invalidated automatically when the Atlas version changes.',
+      default: 'true',
+    },
+    outDir: {
+      type: 'string',
+      description: 'Where analysis output and the cache are written, relative to the root.',
+      default: '".atlas"',
+    },
+    sharedLayers: {
+      type: 'string[]',
+      description: 'Top-level folders to treat as the shared/common layer when checking module boundaries.',
+    },
+    plugins: {
+      type: 'string[]',
+      description: 'Module paths of custom extractors to run alongside the built-in ones.',
+    },
+  }}
+/>
+
+## What is scanned by default
+
+Without an `include`, Atlas scans `**/*.{ts,tsx,js,jsx,mjs,cjs}`. The built-in excludes cover
+`node_modules`, `dist`, `build`, `.next`, `out`, `coverage`, `.atlas`, declaration files, and
+`*.test.*` / `*.spec.*` / `*.stories.*`. Your own `exclude` entries are added on top of that list, so
+you only need to name what's specific to your project.
+
+Set `ATLAS_VERBOSE=1` in the environment for verbose logging.
+
+## Monorepos
+
+Nothing to configure. npm, yarn and pnpm workspaces, Turborepo and Nx are auto-detected from the
+workspace manifests, and each workspace's path aliases resolve on their own — including split
+`tsconfig` setups where a base config is extended by per-package files. Routers are resolved per
+workspace too, so two apps in one repo don't blur into a single route table.
+
+<Callout type="idea" title="Scoping a big repo">
+  You can also just point Atlas at one package: `atlas serve ./apps/web`. That analyzes the app in
+  isolation and keeps its output under `apps/web/.atlas/`.
+</Callout>
+
+## Shared layers & architecture
+
+`sharedLayers` tells the architecture pass which top-level folders are the common layer every module may
+import from. Anything else that reaches across module boundaries is reported as a violation, with a
+recommendation, in `architecture.json` and the dashboard.
+
+## Cache
+
+The incremental cache is on by default and lives in `.atlas/.cache/`. It keys on file contents and the
+Atlas version, so upgrading the tool invalidates it automatically. Disable it per run with `--no-cache`,
+force a clean scan with `--reanalyze`, or turn it off permanently with `"cache": false`.
+
+## Plugins
+
+A plugin contributes extractors (new asset kinds or frameworks) and can post-process the final result.
+Register it in `plugins`; see
+[Architecture → Plugins](https://github.com/Yash-Sakre/atlas/blob/main/docs/architecture.md#extensibility--plugins)
+for the interface.

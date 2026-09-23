@@ -1,0 +1,15 @@
+{
+  "title": "Atlas",
+  "pages": [
+    "---Getting started---",
+    "index",
+    "installation",
+    "configuration",
+    "---CLI reference---",
+    "...cli",
+    "---Guides---",
+    "dashboard",
+    "outputs",
+    "hosting"
+  ]
+}

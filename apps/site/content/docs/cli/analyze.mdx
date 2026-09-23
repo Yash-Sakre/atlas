@@ -1,0 +1,36 @@
+---
+title: atlas analyze
+description: Scan the project and write JSON analysis output.
+icon: ScanSearch
+---
+
+```bash title="Usage"
+atlas analyze [root] [options]
+```
+
+## Overview
+
+Runs the AST pipeline and writes the structured analysis to the output directory: assets, usage, graph,
+dead code, architecture, the npm dependency inventory and the static-asset report. Use it in CI, to diff
+results over time, or to feed other tools — nothing is served and nothing opens.
+
+This is the only command that writes into your repo. See [Analysis outputs](/docs/outputs) for every
+file it produces.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
+| `--no-cache` | | Disable the incremental cache and analyze every file fresh. |
+
+## Examples
+
+```bash
+# Write analysis JSON to .atlas/
+atlas analyze
+
+atlas analyze ./packages/ui --out-dir reports/ui
+atlas analyze --no-cache
+```

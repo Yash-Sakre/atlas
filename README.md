@@ -23,11 +23,12 @@ npx codebase-atlas analyze
 
 …produces JSON outputs **and** an interactive React dashboard served at a link.
 
-> 📖 **Full documentation** lives in [`docs/`](docs/README.md):
-> [Architecture](docs/architecture.md) ·
-> [Commands](docs/commands.md) ·
-> [Hosting & Deployment](docs/hosting.md) ·
-> [Development](docs/development.md)
+> 📖 **Documentation:** [yash-sakre.github.io/atlas/docs](https://yash-sakre.github.io/atlas/docs/) —
+> [Quickstart](https://yash-sakre.github.io/atlas/docs/) ·
+> [CLI reference](https://yash-sakre.github.io/atlas/docs/cli/serve/) ·
+> [Hosting & Deployment](https://yash-sakre.github.io/atlas/docs/hosting/).
+> Working on Atlas itself? See the contributor docs:
+> [Architecture](docs/architecture.md) · [Development](docs/development.md)
 
 ---
 
@@ -42,10 +43,10 @@ This scans the project, then serves an interactive React dashboard at
 `http://localhost:4321` and opens it in your browser. **Nothing is written into
 your codebase** — the analysis is cached under `~/.atlas/`.
 
-Run it against the bundled demo:
+Run it against the bundled demo (from a clone of this repo):
 
 ```bash
-npx codebase-atlas serve --root examples/sample-app
+npx codebase-atlas serve --root packages/cli/examples/sample-app
 ```
 
 ### Hosting it
@@ -76,8 +77,8 @@ atlas export --out-dir ~/my-codebase-site
 Common flags: `--root <dir>`, `--out-dir <dir>`, `--json`, `--no-cache`.
 `serve` adds `--port <n>`, `--no-open`, `--reanalyze`.
 
-> The dashboard is a React + Vite app under [`dashboard/`](dashboard/). It ships
-> prebuilt; rebuild it with `npm run build:dashboard`.
+> The dashboard is a React + Vite app under [`packages/dashboard/`](packages/dashboard/).
+> It ships prebuilt inside the npm package; in this repo, build it with `npm run build:dashboard`.
 
 ```bash
 atlas search authentication
@@ -244,20 +245,24 @@ cross-package coupling.
 
 ## Architecture
 
-```
-src/
-├─ core/          types contract · config · project loader · analyzer (orchestrator)
-├─ extractors/    component · hook · util · context/store · route  (+ ast-utils)
-├─ analysis/      usage · graph · dead-code · architecture
-├─ ai/            offline heuristic describer · agent hand-off (claude/codex/cursor)
-├─ search/        Fuse.js index
-├─ serve/         dashboard static server · cache paths · result loader
-├─ output/        JSON writer
-├─ plugins/       plugin loader
-├─ utils/         logger · incremental cache · hashing
-└─ cli/           commander commands
+This repo is an npm-workspaces monorepo:
 
-dashboard/        React + Vite dashboard app (ships prebuilt in dashboard/dist)
+```
+packages/schema/     @codebase-atlas/schema — the analysis output types, shared
+packages/dashboard/  React + Vite dashboard app (bundled into the CLI on pack)
+packages/cli/        codebase-atlas — the published CLI:
+  src/
+  ├─ core/          types (re-exports the schema) · config · project loader · analyzer
+  ├─ extractors/    component · hook · util · context/store · route  (+ ast-utils)
+  ├─ analysis/      usage · graph · dead-code · architecture
+  ├─ ai/            offline heuristic describer · agent hand-off (claude/codex/cursor)
+  ├─ search/        Fuse.js index
+  ├─ serve/         dashboard static server · cache paths · result loader
+  ├─ output/        JSON writer
+  ├─ plugins/       plugin loader
+  ├─ utils/         logger · incremental cache · hashing
+  └─ cli/           commander commands
+apps/site/           landing page + user docs (Next.js + Fumadocs)
 ```
 
 **Extensibility — plugin system.** A plugin can contribute extractors (new asset
@@ -285,12 +290,15 @@ dashboard renders the result (served by `serve` or deployed via `export`).
 ## Development
 
 ```bash
-npm install
-npm run dev -- analyze --root examples/sample-app   # run from source via tsx
-npm run build                                        # compile to dist/
+npm install                                          # all workspaces (builds the schema too)
+npm run dev -- analyze --root examples/sample-app   # run the CLI from source via tsx
+npm run build                                        # schema → dashboard → CLI
 npm test                                             # vitest
-npm run typecheck
+npm run typecheck                                    # every workspace
+npm run dev:site                                     # the website, at localhost:3000
 ```
+
+See [docs/development.md](docs/development.md) for the full workflow.
 
 ## License
 

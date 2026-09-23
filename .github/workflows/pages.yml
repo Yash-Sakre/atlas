@@ -1,10 +1,11 @@
-name: Deploy landing page
+name: Deploy site
 
 on:
   push:
     branches: [main]
     paths:
-      - "site/**"
+      - "apps/site/**"
+      - "package-lock.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,21 +33,23 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: site/package-lock.json
 
       - name: Install dependencies
-        run: npm --prefix site ci
+        run: npm ci
 
       - name: Build site
-        run: npm --prefix site run build
+        run: npm run build:site
+        env:
+          # Pages serves this repo's site under /atlas/.
+          NEXT_PUBLIC_BASE_PATH: /atlas
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload site/dist
+      - name: Upload apps/site/out
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site/dist
+          path: apps/site/out
 
       - name: Deploy to GitHub Pages
         id: deployment

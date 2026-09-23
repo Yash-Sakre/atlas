@@ -1,0 +1,28 @@
+---
+title: atlas watch
+description: Re-analyze automatically on file changes.
+icon: Eye
+---
+
+```bash title="Usage"
+atlas watch [root] [options]
+```
+
+## Overview
+
+Watches the project and incrementally re-runs analysis whenever files change, keeping the cache and any
+served dashboard up to date as you work.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
+| `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
+
+## Examples
+
+```bash
+atlas watch
+atlas watch ./apps/web
+```

@@ -1,0 +1,181 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* ============================== Atlas theme ============================== */
+/*
+ * Two surfaces: the shell (page edges, sidebar, corner tab) and the panel the
+ * docs content sits in. Warm near-blacks in dark mode, matching the landing
+ * page and the dashboard. Borders are opaque so the panel outline and the
+ * corner tab's curves line up without double-blending.
+ */
+:root {
+  --atlas-shell: #f3f2ef;
+  --atlas-panel-border: #e2e0dc;
+  --color-fd-background: #ffffff;
+  --color-fd-primary: #1a73e8;
+}
+
+.dark {
+  --atlas-shell: #0a0908;
+  --atlas-panel-border: #24221f;
+  --color-fd-background: #100f0d;
+  --color-fd-foreground: #eeedea;
+  --color-fd-card: #141311;
+  --color-fd-popover: #161513;
+  --color-fd-popover-foreground: #eeedea;
+  --color-fd-muted: #161513;
+  --color-fd-muted-foreground: #9a9893;
+  --color-fd-secondary: #181715;
+  --color-fd-secondary-foreground: #eeedea;
+  --color-fd-accent: #1f1d1a;
+  --color-fd-accent-foreground: #ffffff;
+  --color-fd-border: #24221f;
+  --color-fd-ring: #2e9bff;
+  --color-fd-primary: #2e9bff;
+  --color-fd-primary-foreground: #0a0908;
+}
+
+/* The reserved scrollbar gutter shows the root background, outside any fixed frame. */
+html:has(.atlas-docs) {
+  background-color: var(--atlas-shell);
+}
+
+/* ---- sidebar: sits on the shell; neutral active state like the dashboard ---- */
+#nd-sidebar {
+  background: var(--atlas-shell);
+  border-inline-end: 0;
+}
+
+#nd-sidebar a[data-active='true'] {
+  background: var(--color-fd-accent);
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+}
+
+#nd-sidebar a[data-active='true'] svg {
+  color: var(--color-fd-primary);
+}
+
+/* ---- corner tab (hidden on small screens, where there is no panel) ---- */
+.atlas-corner {
+  display: none;
+}
+
+.atlas-corner-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--color-fd-muted-foreground);
+  transition: color 0.15s, background-color 0.15s;
+}
+.atlas-corner-item:hover {
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-accent);
+}
+.atlas-corner-item b {
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+}
+
+.atlas-corner-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--atlas-panel-border);
+}
+
+/* ---- the inset panel (md+, where the sidebar is docked) ---- */
+@media (min-width: 768px) {
+  .atlas-docs {
+    --atlas-gap: 8px;
+    --atlas-radius: 18px;
+    --atlas-notch: 14px;
+    /* Stretch the grid edge to edge: sidebar flush left, panel filling the rest. */
+    --fd-layout-width: 100%;
+  }
+
+  /*
+   * One fixed frame draws the panel: its border is the outline, and a huge
+   * spread shadow paints the shell colour over everything outside it — so
+   * content scrolling past the top edge disappears into the gap, like an app
+   * window. It sits above the page content but below the sidebar (z-20) and
+   * the corner tab, and never takes pointer events.
+   */
+  .atlas-docs::after {
+    content: '';
+    position: fixed;
+    z-index: 15;
+    top: var(--atlas-gap);
+    right: var(--atlas-gap);
+    bottom: var(--atlas-gap);
+    left: max(var(--atlas-gap), var(--fd-sidebar-col));
+    border: 1px solid var(--atlas-panel-border);
+    border-radius: var(--atlas-radius);
+    box-shadow: 0 0 0 100vmax var(--atlas-shell);
+    pointer-events: none;
+  }
+
+  /* Clear the corner tab. */
+  #nd-toc {
+    padding-top: 5.5rem;
+  }
+
+  .atlas-corner {
+    position: fixed;
+    z-index: 25;
+    top: var(--atlas-gap);
+    right: var(--atlas-gap);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 46px;
+    padding: 0 10px 0 12px;
+    background: var(--atlas-shell);
+    border-left: 1px solid var(--atlas-panel-border);
+    border-bottom: 1px solid var(--atlas-panel-border);
+    border-bottom-left-radius: 16px;
+    border-top-right-radius: var(--atlas-radius);
+  }
+
+  /*
+   * The two concave joins between the tab and the panel outline: a quarter
+   * circle of panel (transparent) ringed by the border colour, with the shell
+   * colour outside it. ::before meets the panel's top edge, ::after its right
+   * edge. Offsets account for the tab's own 1px borders.
+   */
+  .atlas-corner::before,
+  .atlas-corner::after {
+    content: '';
+    position: absolute;
+    width: var(--atlas-notch);
+    height: var(--atlas-notch);
+    background: radial-gradient(
+      circle at 0 100%,
+      transparent calc(var(--atlas-notch) - 1.25px),
+      var(--atlas-panel-border) calc(var(--atlas-notch) - 1px),
+      var(--atlas-panel-border) var(--atlas-notch),
+      var(--atlas-shell) calc(var(--atlas-notch) + 0.25px)
+    );
+    pointer-events: none;
+  }
+  .atlas-corner::before {
+    top: 0;
+    left: calc(-1 * var(--atlas-notch));
+  }
+  .atlas-corner::after {
+    top: 100%;
+    right: 0;
+  }
+}

@@ -1,0 +1,43 @@
+---
+title: atlas serve
+description: Analyze and open the interactive dashboard.
+icon: Play
+---
+
+```bash title="Usage"
+atlas serve [root] [options]
+```
+
+## Overview
+
+The fastest way to explore a codebase. Atlas runs the full AST analysis (reusing the cache when it can),
+then starts a local server and opens the React dashboard — search, asset detail, props and params, usage
+locations, the dependency graph, your npm inventory and the static files you ship, previewed straight
+from disk.
+
+**Nothing is written into your codebase** — the analysis is cached under `~/.atlas/`. The server is a
+dependency-free Node `http` server bound to `127.0.0.1`, so it is not exposed to your network. It runs
+until you stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd>.
+
+## Options
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-r, --root <dir>` | cwd | Project root to analyze (or pass it positionally). |
+| `-p, --port <n>` | `4321` | Preferred port; Atlas falls back to a free one if it's taken. |
+| `--no-open` | | Start the server but do not open the browser automatically. |
+| `--reanalyze` | | Ignore cached analysis and re-scan from scratch. |
+
+## Examples
+
+```bash
+# Analyze the current directory and open the dashboard
+npx codebase-atlas serve
+
+atlas serve ./apps/web --port 3000
+
+# Force a fresh scan without launching a browser
+atlas serve --no-open --reanalyze
+```
+
+See [Dashboard views](/docs/dashboard) for a tour of what opens.
