@@ -10,21 +10,22 @@ const inter = Inter({
 });
 
 const description =
-  'Atlas scans a React / Next.js / Vite / TypeScript codebase and auto-discovers every reusable asset — components, hooks, utilities, contexts, stores and routes — by AST semantics, never by folder names, then maps your dependency graph, npm inventory and architecture.';
+  'Atlas is a free, open-source CLI that maps every component, hook, utility, context, store and route in your React, Next.js or Vite codebase — plus dead code, npm dependencies and architecture. One command, zero config.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: appName, template: `%s | ${appName}` },
   description,
+  applicationName: appName,
   icons: { icon: `${basePath}/atlas-mark.svg` },
   openGraph: {
     siteName: appName,
     type: 'website',
-    title: 'Atlas — map your frontend codebase',
+    title: 'Atlas — stop rebuilding what you already built',
     description:
-      'See what already exists before you write new code. AST-powered discovery of components, hooks, utils, contexts, stores & routes — plus dependencies, architecture and dead code.',
+      'Find every reusable React component, hook and util in your codebase — plus dead code, dependencies and architecture. Free, open source, zero config.',
   },
-  twitter: { card: 'summary' },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {

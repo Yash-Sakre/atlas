@@ -26,10 +26,16 @@ export default function CommandBox({ command }: { command: string }) {
   };
 
   return (
-    <div className="cmd">
-      <span className="prompt">$</span>
-      <code>{command}</code>
-      <button className="copy" onClick={copy} aria-label="Copy command">
+    <div className="inline-flex h-12.5 max-w-full min-w-0 items-center gap-3 rounded-full border border-black/8 bg-neutral-100 pr-1.5 pl-5 font-mono text-[15px] dark:border-white/8 dark:bg-stone-900">
+      <span className="text-neutral-400 select-none dark:text-neutral-600">$</span>
+      <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap text-neutral-900 [scrollbar-width:none] dark:text-neutral-50">
+        {command}
+      </code>
+      <button
+        className="grid size-9 flex-none cursor-pointer place-items-center rounded-full bg-white text-neutral-500 transition hover:text-neutral-900 active:scale-92 dark:bg-stone-950 dark:text-neutral-400 dark:hover:text-neutral-50 [&_svg]:size-3.75"
+        onClick={copy}
+        aria-label="Copy command"
+      >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
     </div>

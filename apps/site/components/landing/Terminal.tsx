@@ -1,21 +1,67 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
-const LINES: string[] = [
-  '<span class="c-prompt">$</span> <span class="c-cmd">npx codebase-atlas serve</span>',
-  '<span class="c-dim">Scanning project… (509 files)</span>',
-  '<span class="c-ok">✓</span> Components <span class="c-tag">9</span>   <span class="c-ok">✓</span> Hooks <span class="c-tag">3</span>   <span class="c-ok">✓</span> Utils <span class="c-tag">4</span>',
-  '<span class="c-ok">✓</span> Contexts <span class="c-tag">2</span>   <span class="c-ok">✓</span> Routes <span class="c-tag">2</span>',
-  '<span class="c-ok">✓</span> Dependencies <span class="c-tag">31</span> packages · <span class="c-tag">4</span> outdated',
-  '<span class="c-ok">✓</span> Static assets <span class="c-tag">46</span> files · <span class="c-tag">7.2 MB</span> on disk',
-  '<span class="c-warn">⚠</span> 3 unused exports · 2 orphan files · 5 unreferenced assets',
-  '<span class="c-dim">Most used:</span> Button <span class="c-tag">5×</span> · TextInput <span class="c-tag">3×</span>',
-  '<span class="c-dim">Wrote</span> .atlas/ <span class="c-dim">— 12 JSON files</span>',
-  '<span class="c-ok">→</span> Dashboard ready at <span class="c-link">http://localhost:4321</span>',
+/* Terminal palette — the window is dark in both themes. */
+const P = 'text-blue-400'; // prompt, links
+const DIM = 'text-stone-400';
+const OK = 'text-green-400';
+const WARN = 'text-amber-300';
+const TAG = 'text-violet-300';
+
+const ok = <span className={OK}>✓</span>;
+
+const LINES: ReactNode[] = [
+  <>
+    <span className={P}>$</span> <span className="text-white">npx codebase-atlas serve</span>
+  </>,
+  <span className={DIM}>Scanning project… (509 files)</span>,
+  <>
+    {ok} Components <span className={TAG}>9</span>   {ok} Hooks <span className={TAG}>3</span>   {ok} Utils{' '}
+    <span className={TAG}>4</span>
+  </>,
+  <>
+    {ok} Contexts <span className={TAG}>2</span>   {ok} Routes <span className={TAG}>2</span>
+  </>,
+  <>
+    {ok} Dependencies <span className={TAG}>31</span> packages · <span className={TAG}>4</span> outdated
+  </>,
+  <>
+    {ok} Static assets <span className={TAG}>46</span> files · <span className={TAG}>7.2 MB</span> on disk
+  </>,
+  <>
+    <span className={WARN}>⚠</span> 3 unused exports · 2 orphan files · 5 unreferenced assets
+  </>,
+  <>
+    <span className={DIM}>Most used:</span> Button <span className={TAG}>5×</span> · TextInput <span className={TAG}>3×</span>
+  </>,
+  <>
+    <span className={DIM}>Wrote</span> .atlas/ <span className={DIM}>— 12 JSON files</span>
+  </>,
+  <>
+    <span className={OK}>→</span> Dashboard ready at{' '}
+    <span className={`${P} underline underline-offset-3`}>http://localhost:4321</span>
+  </>,
 ];
 
-/** macOS-style terminal that reveals its output line-by-line on first view. */
+/** macOS-style window chrome around dark terminal output. */
+export function TerminalWindow({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-white/8 bg-stone-900 text-stone-300 shadow-2xl shadow-black/30">
+      <div className="relative flex h-10 items-center gap-1.75 border-b border-white/6 bg-stone-800/60 px-4">
+        <span className="size-2.75 rounded-full bg-red-400" />
+        <span className="size-2.75 rounded-full bg-amber-400" />
+        <span className="size-2.75 rounded-full bg-green-500" />
+        <span className="absolute left-1/2 -translate-x-1/2 text-xs text-stone-500">{title}</span>
+      </div>
+      <div className="overflow-x-auto px-5.5 pt-5.5 pb-6.5 font-mono text-[13.5px] leading-[1.9] whitespace-pre">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Terminal that reveals its output line by line the first time it scrolls into view. */
 export default function Terminal() {
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(0);
@@ -54,30 +100,20 @@ export default function Terminal() {
     };
   }, []);
 
+  const fade = (visible: boolean) => `transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`;
+
   return (
-    <div className="terminal hero-term">
-      <div className="term-chrome">
-        <span className="dot" />
-        <span className="dot" />
-        <span className="dot" />
-        <span className="title">Terminal — atlas</span>
-      </div>
-      <div className="term-tabs">
-        <span className="term-tab">atlas</span>
-        <span className="term-plus">+</span>
-      </div>
-      <div className="term-body mono" ref={ref}>
-        {LINES.map((line, i) => (
-          <div
-            key={i}
-            className={`ln ${i < shown ? 'show' : ''}`}
-            dangerouslySetInnerHTML={{ __html: line }}
-          />
+    <TerminalWindow title="~/my-app — zsh">
+      <div ref={ref} className="min-h-68">
+        {LINES.map((content, i) => (
+          <div key={i} className={fade(i < shown)}>
+            {content}
+          </div>
         ))}
-        <div className={`ln ${shown >= LINES.length ? 'show' : ''}`}>
-          <span className="c-prompt">$</span> <span className="cursor" />
+        <div className={fade(shown >= LINES.length)}>
+          <span className={P}>$</span> <span className="inline-block h-4 w-2 motion-safe:animate-blink bg-blue-400 align-[-3px]" />
         </div>
       </div>
-    </div>
+    </TerminalWindow>
   );
 }

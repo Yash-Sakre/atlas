@@ -3,71 +3,75 @@
 import { useId } from 'react';
 
 /**
- * Atlas brand mark: a central hub linked to six satellite nodes — one per
- * reusable asset kind (component, hook, util, context, store, route) — colored
- * with the dashboard's asset hues. Encodes what Atlas does: discover and
- * connect the reusable assets in a codebase via its dependency graph.
+ * Atlas brand mark: an "A" folded from two panels, like a map. The panel in
+ * shade carries the brand gradient.
+ *
+ * - `variant="tile"` (default): the glyph in white on a glossy black square
+ *   with a polished, light-catching border — the app icon.
+ * - `variant="glyph"`: the bare glyph; the lit panel and crossbar use
+ *   `currentColor` so it follows the surrounding text in either theme.
+ *
+ * public/atlas-mark.svg is the tile as a static file — keep them in step.
  */
-export default function AtlasMark({ size = 28 }: { size?: number }) {
-  const id = useId().replace(/:/g, '');
-  const tile = `tile-${id}`;
-  const sheen = `sheen-${id}`;
-  const hub = `hub-${id}`;
+type Props = { size?: number; variant?: 'glyph' | 'tile' };
 
-  const nodes: Array<[number, number, string]> = [
-    [256, 106, '#7fc4ff'], // component
-    [386, 181, '#c0a8ff'], // hook
-    [386, 331, '#7be3a8'], // utility
-    [256, 406, '#ffce85'], // context
-    [126, 331, '#ffb27d'], // store
-    [126, 181, '#e6a3ff'], // route
-  ];
+// Shared flat edge at the apex is the fold.
+const SHADE = 'M25 6h11.5L19.5 58H5.5z';
+const LIT = 'M25 6h14l20 52H45z';
+const BAR = 'M22.5 40h18.2l-3 8.4H19.6z';
+
+export default function AtlasMark({ size = 28, variant = 'tile' }: Props) {
+  const id = useId().replace(/:/g, '');
+  const grad = `atlas-grad-${id}`;
+  const fill = `atlas-fill-${id}`;
+  const rim = `atlas-rim-${id}`;
+  const glare = `atlas-glare-${id}`;
+  const isTile = variant === 'tile';
+  const ink = isTile ? '#ffffff' : 'currentColor';
 
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" role="img" aria-label="Atlas" fill="none">
+    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="Atlas" fill="none">
       <defs>
-        <linearGradient id={tile} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#1b1713" />
-          <stop offset="1" stopColor="#0a0908" />
+        <linearGradient id={grad} x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0" stopColor="#4ea8ff" />
+          <stop offset="0.55" stopColor="#a58bff" />
+          <stop offset="1" stopColor="#ff7aa8" />
         </linearGradient>
-        <radialGradient id={sheen} cx="0.82" cy="0.06" r="0.9">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.10" />
-          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id={hub} cx="0.4" cy="0.35" r="0.8">
-          <stop offset="0" stopColor="#ffffff" />
-          <stop offset="1" stopColor="#d9d7d2" />
-        </radialGradient>
+        {isTile && (
+          <>
+            <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#1c1c1e" />
+              <stop offset="1" stopColor="#000000" />
+            </linearGradient>
+            {/* polished rim: bright on the top-left and bottom-right corners, dark between */}
+            <linearGradient id={rim} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+              <stop offset="0.3" stopColor="#ffffff" stopOpacity="0.28" />
+              <stop offset="0.55" stopColor="#ffffff" stopOpacity="0.06" />
+              <stop offset="0.8" stopColor="#c9c3ff" stopOpacity="0.3" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity="0.8" />
+            </linearGradient>
+            <radialGradient id={glare} cx="0.2" cy="0" r="0.75">
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.2" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+            </radialGradient>
+          </>
+        )}
       </defs>
 
-      <rect width="512" height="512" rx="116" fill={`url(#${tile})`} />
-      <rect width="512" height="512" rx="116" fill={`url(#${sheen})`} />
-      <rect x="1" y="1" width="510" height="510" rx="115" fill="none" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="2" />
+      {isTile && (
+        <>
+          <rect width="64" height="64" rx="14" fill={`url(#${fill})`} />
+          <rect width="64" height="64" rx="14" fill={`url(#${glare})`} />
+          <rect x="1.25" y="1.25" width="61.5" height="61.5" rx="12.75" stroke={`url(#${rim})`} strokeWidth="2.5" />
+        </>
+      )}
 
-      <polygon
-        points="256,106 386,181 386,331 256,406 126,331 126,181"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.10"
-        strokeWidth="3"
-      />
-
-      <g stroke="#ffffff" strokeOpacity="0.26" strokeWidth="6" strokeLinecap="round">
-        {nodes.map(([x, y], i) => (
-          <line key={i} x1="256" y1="256" x2={x} y2={y} />
-        ))}
+      <g transform={isTile ? 'translate(13 13) scale(0.6)' : undefined}>
+        <path d={SHADE} fill={`url(#${grad})`} />
+        <path d={LIT} fill={ink} />
+        <path d={BAR} fill={ink} />
       </g>
-
-      {nodes.map(([x, y, color], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="34" fill={color} fillOpacity="0.22" />
-          <circle cx={x} cy={y} r="22" fill={color} />
-        </g>
-      ))}
-
-      <circle cx="256" cy="256" r="44" fill="#0a0908" fillOpacity="0.55" />
-      <circle cx="256" cy="256" r="34" fill={`url(#${hub})`} />
-      <circle cx="256" cy="256" r="34" fill="none" stroke="#0a0908" strokeOpacity="0.12" strokeWidth="2" />
     </svg>
   );
 }
