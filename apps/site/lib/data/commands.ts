@@ -15,6 +15,6 @@ export const COMMANDS: Command[] = [
   { id: 'graph', name: 'atlas graph', tagline: 'Print the dependency graph.' },
   { id: 'dead-code', name: 'atlas dead-code', tagline: 'Find unused exports, orphans and duplicates.' },
   { id: 'search', name: 'atlas search', tagline: 'Fuzzy-search every discovered asset.' },
-  { id: 'describe', name: 'atlas describe', tagline: 'Generate richer docs — with or without an AI agent.' },
+  { id: 'describe', name: 'atlas ai', tagline: 'Let Claude Code, Codex or Cursor describe every asset.' },
   { id: 'watch', name: 'atlas watch', tagline: 'Re-analyze automatically on file changes.' },
 ];

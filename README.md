@@ -43,6 +43,15 @@ This scans the project, then serves an interactive React dashboard at
 `http://localhost:4321` and opens it in your browser. **Nothing is written into
 your codebase** — the analysis is cached under `~/.atlas/`.
 
+Don't want to remember commands? Run `atlas` on its own in a terminal for an
+interactive menu — pick the project, then open the dashboard, describe assets
+with AI, search, report dead code and more.
+
+```bash
+atlas        # guided menu
+atlas ai     # have Claude Code / Codex / Cursor describe every asset
+```
+
 Run it against the bundled demo (from a clone of this repo):
 
 ```bash
@@ -65,17 +74,19 @@ atlas export --out-dir ~/my-codebase-site
 
 | Command | Description |
 | --- | --- |
-| `serve` | Analyze and serve the interactive React dashboard at a local link. |
+| *(none)* | In a terminal: an interactive menu over every command below. |
+| `serve` (`open`) | Analyze and serve the interactive React dashboard at a local link. |
 | `export` | Write a hostable static dashboard bundle (app + `data.json`) to an external folder. |
 | `analyze` | Scan the project; write the JSON analysis outputs. |
-| `describe` | Hand every asset to a coding agent (Claude / Codex / Cursor) for richer descriptions — or regenerate the offline heuristic ones. |
+| `describe` (`ai`) | Have a coding agent (Claude Code / Codex / Cursor) write richer descriptions — batched, resumable, interactive — or regenerate the offline heuristic ones. |
 | `graph` | Print the dependency graph as an ASCII tree (`--json` for raw). |
-| `dead-code` | Report unused exports, orphan files, duplicate candidates. |
-| `search <query>` | Fuzzy-search every discovered asset. |
+| `dead-code` (`dead`) | Report unused exports, orphan files, duplicate candidates. |
+| `search [query]` | Fuzzy-search every discovered asset (asks for the query if omitted). |
 | `watch` | Re-analyze automatically (incrementally) on file changes. |
 
 Common flags: `--root <dir>`, `--out-dir <dir>`, `--json`, `--no-cache`.
-`serve` adds `--port <n>`, `--no-open`, `--reanalyze`.
+`serve` adds `--port <n>`, `--no-open`, `--reanalyze`. Aliases are shown in
+parentheses, e.g. `atlas ai` = `atlas describe`.
 
 > The dashboard is a React + Vite app under [`packages/dashboard/`](packages/dashboard/).
 > It ships prebuilt inside the npm package; in this repo, build it with `npm run build:dashboard`.
@@ -174,42 +185,40 @@ keys, no network, no cost. The heuristic describer reads each asset's static
 metadata (names, params/props, JSDoc, route paths, usage) to produce purpose,
 responsibilities, inputs/outputs, dependencies, when-to-use, and example notes.
 
-### Hand off to a coding agent (`describe`)
+### Describe with a coding agent (`atlas ai`)
 
-Want descriptions richer than a heuristic can write? Hand the assets to a coding
-agent you already run — **Claude Code, Codex, or Cursor**. Atlas itself stays
-offline; it just builds a packet and ingests what the agent writes back.
-
-```bash
-# Write a hand-off packet and print the exact command for each detected agent
-atlas describe
-
-# …or auto-run an agent end-to-end, then fold its answers into the dashboard
-atlas describe --agent claude     # claude | codex | cursor
-```
-
-`describe` writes a packet under `.atlas/handoff/`:
-
-```
-.atlas/handoff/
-├─ PROMPT.md          # instructions + the exact answer schema for the agent
-├─ assets.json        # every asset's id, kind, signature, props/params, usage
-└─ descriptions.json  # ← the agent writes this (one rich description per id)
-```
-
-The agent reads `PROMPT.md` + `assets.json` and writes `descriptions.json`. Then:
+Want descriptions richer than a heuristic can write? Let a coding agent you
+already run — **Claude Code, Codex, or Cursor** — write them. Atlas itself stays
+offline and needs no API key: it drives the agent's own CLI head-less with
+**read-only tools**, parses the JSON the agent prints, and writes the files
+itself.
 
 ```bash
-atlas describe --apply           # merge the agent's answers into the analysis
+atlas ai          # interactive: pick agent, asset kinds and model, confirm, go
 ```
+
+Or script it:
+
+```bash
+atlas ai --agent claude --model haiku --only components,hooks --yes
+```
+
+- **Batched** — 25 assets per agent call, 2 calls in parallel
+  (`--batch-size`, `--concurrency`), so big repos don't overflow the agent's context.
+- **Resumable** — every finished batch is saved to
+  `.atlas/handoff/descriptions.json` immediately. Ctrl+C, then re-run to finish
+  just what's missing; `--fresh` regenerates everything.
+- **Sticky** — later `analyze` / `watch` / `serve --reanalyze` runs re-apply the
+  saved agent descriptions instead of reverting to heuristic text.
 
 Each agent-authored description is tagged with its `source` (`claude` / `codex` /
 `cursor`) so the dashboard badges it distinctly from heuristic text. Any asset
 the agent skips keeps its heuristic description as a fallback.
 
 ```bash
-atlas describe --heuristic        # (re)generate the offline descriptions instead
-atlas describe --agent codex --no-run   # write the packet but don't invoke the agent
+atlas describe --heuristic   # (re)generate the offline descriptions instead
+atlas describe --copy        # copy a prompt to paste into any agent or chat…
+atlas describe --apply       # …then fold its descriptions.json back in
 ```
 
 ---

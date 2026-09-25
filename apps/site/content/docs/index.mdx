@@ -20,6 +20,9 @@ From your project root, run the one command that does everything: analyze, cache
 npx codebase-atlas serve
 ```
 
+Not sure where to start? Run `atlas` on its own for an [interactive menu](/docs/cli/options#interactive-mode)
+of every command.
+
 </Step>
 <Step>
 
@@ -66,6 +69,18 @@ atlas export --out-dir ../atlas-site
 ```
 
 </Step>
+<Step>
+
+### Let AI write the docs (optional)
+
+If you have Claude Code, Codex or Cursor installed, Atlas can have it write a sharper one-line
+description for every asset — batched, resumable, and shown in the dashboard with a source badge.
+
+```bash
+atlas ai
+```
+
+</Step>
 </Steps>
 
 <Callout type="idea" title="Keep it fresh">
@@ -86,7 +101,7 @@ npx codebase-atlas serve --root atlas/packages/cli/examples/sample-app
 
 Every run writes a plain-JSON snapshot to `.atlas/` — see the [output reference](/docs/outputs).
 Nothing is uploaded, no API keys are needed, and descriptions are generated offline from real AST
-facts. If you want richer prose, [hand the assets to a coding agent](/docs/cli/describe) on purpose.
+facts. If you want richer prose, [let a coding agent describe them](/docs/cli/describe) on purpose with `atlas ai`.
 
 ## Where to go next
 

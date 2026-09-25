@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  ArrowRight,
   Brain,
   ChevronRight,
   Cpu,
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import CommandBox from '@/components/landing/CommandBox';
 import DashboardPreview from '@/components/landing/DashboardPreview';
+import DashboardTour from '@/components/landing/DashboardTour';
 import GitHubButton from '@/components/landing/GitHubButton';
 import Terminal, { TerminalWindow } from '@/components/landing/Terminal';
 import {
@@ -52,6 +52,9 @@ const TITLE = 'Atlas: Find Reusable React Components, Hooks & Dead Code';
 const DESCRIPTION =
   'Free, open-source CLI that maps every component, hook, utility, store and route in your React, Next.js or Vite codebase — plus dead code, npm dependencies and architecture. One command, zero config.';
 
+/** Social card: public/og.png, the dark Overview screenshot under the tagline. */
+const OG_IMAGE = { url: `${siteUrl}/og.png`, width: 1200, height: 630, alt: 'The Atlas dashboard Overview' };
+
 export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
@@ -70,8 +73,8 @@ export const metadata: Metadata = {
     'frontend architecture',
   ],
   alternates: { canonical: `${siteUrl}/` },
-  openGraph: { type: 'website', url: `${siteUrl}/`, title: TITLE, description: DESCRIPTION },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+  openGraph: { type: 'website', url: `${siteUrl}/`, title: TITLE, description: DESCRIPTION, images: [OG_IMAGE] },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [OG_IMAGE.url] },
 };
 
 /** schema.org description of the tool, so search engines can show it as software. */
@@ -318,28 +321,10 @@ export default function HomePage() {
               one snapshot, so every number agrees with every other.
             </p>
           </div>
-          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {DASHBOARD_VIEWS.map(({ id, name, desc, isNew, icon: Icon }) => (
-              <div key={id} className={`${CARD_ON_ALT} ${CARD_HOVER} reveal flex min-w-0 flex-col p-7`}>
-                <div className="mb-5.5 flex items-center justify-between">
-                  <span className="grid size-11 place-items-center rounded-xl bg-blue-600/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-400">
-                    <Icon size={20} strokeWidth={1.8} />
-                  </span>
-                  {isNew && <span className={BADGE_NEW}>New</span>}
-                </div>
-                <h3 className={`mb-2 text-lg font-bold tracking-tight ${INK}`}>{name}</h3>
-                <p className={`text-[14.5px] leading-relaxed ${MUTED}`}>{desc}</p>
-              </div>
-            ))}
-            <Link
-              href="/docs/dashboard"
-              className={`${CARD_HOVER} reveal group relative flex min-h-38 flex-col justify-end rounded-3xl bg-neutral-900 p-7 dark:bg-neutral-50`}
-            >
-              <h3 className="mb-2 text-lg font-bold tracking-tight text-white dark:text-neutral-900">Take the full tour</h3>
-              <p className="text-[14.5px] text-neutral-400 dark:text-neutral-500">Every view, explained in the docs.</p>
-              <span className="absolute top-7 right-7 grid size-9 place-items-center rounded-full bg-white text-neutral-900 transition-transform duration-300 group-hover:translate-x-1 dark:bg-stone-950 dark:text-neutral-50">
-                <ArrowRight size={18} />
-              </span>
+          <DashboardTour />
+          <div className="reveal mt-12 text-center">
+            <Link href="/docs/dashboard" className={LINK_ARROW}>
+              Take the full tour in the docs <ChevronRight size={16} strokeWidth={2.2} className={ARROW_NUDGE} />
             </Link>
           </div>
         </div>
@@ -410,7 +395,7 @@ export default function HomePage() {
             <ul className="mt-8 grid gap-4.5">
               {[
                 { icon: Cpu, title: 'Offline-first docs.', body: <>Built from real AST facts, so signatures are never hallucinated.</> },
-                { icon: Sparkles, title: 'Optional handoff.', body: <><Code>atlas describe</Code> pipes assets to Claude, Codex or Cursor.</> },
+                { icon: Sparkles, title: 'Optional AI pass.', body: <><Code>atlas ai</Code> has Claude Code, Codex or Cursor describe every asset.</> },
                 { icon: Zap, title: 'Agent-ready context.', body: <>Give your coding agent a map of what exists, so it reuses instead of reinventing.</> },
               ].map(({ icon: Icon, title, body }) => (
                 <li key={title} className={`flex gap-3.5 leading-relaxed ${MUTED}`}>
@@ -423,18 +408,18 @@ export default function HomePage() {
             </ul>
           </div>
           <div className="reveal min-w-0">
-            <TerminalWindow title="atlas describe">
-              <span className="text-blue-400">$</span> <span className="text-white">atlas describe --agent claude</span>
+            <TerminalWindow title="atlas ai">
+              <span className="text-blue-400">$</span> <span className="text-white">atlas ai --agent claude --model haiku</span>
               {'\n'}
-              <span className="text-stone-400">→ Sending 18 assets with AST context…</span>
+              <span className="text-stone-400">→ Handing 135 assets to Claude Code…</span>
               {'\n'}
-              <span className="text-green-400">✓</span> Button       <span className="text-stone-400">A11y-ready button, 4 variants</span>
+              <span className="text-green-400">✓</span> Claude Code described 135/135 assets in 2m 41s
               {'\n'}
-              <span className="text-green-400">✓</span> useDebounce  <span className="text-stone-400">Delays a value by N ms</span>
+              <span className="text-green-400">✓</span> Button       <span className="text-stone-400">Renders a 4-variant button with a loading state</span>
               {'\n'}
-              <span className="text-green-400">✓</span> AuthContext  <span className="text-stone-400">Session + role state</span>
+              <span className="text-green-400">✓</span> useDebounce  <span className="text-stone-400">Delays a value by `delay` ms</span>
               {'\n'}
-              <span className="text-amber-300">i</span> <span className="text-stone-400">No keys needed for the default offline pass</span>
+              <span className="text-amber-300">i</span> <span className="text-stone-400">Read-only agent, batched and resumable, no API keys</span>
             </TerminalWindow>
           </div>
         </div>
@@ -466,6 +451,32 @@ export default function HomePage() {
                 />
               </Link>
             ))}
+          </div>
+          <div className="reveal mx-auto mt-14 grid max-w-4xl items-center gap-8 md:grid-cols-[1fr_1.3fr]">
+            <div>
+              <h3 className={H3}>Or just run <Code>atlas</Code>.</h3>
+              <p className={`leading-relaxed ${MUTED}`}>
+                No flags to remember: in a terminal, Atlas opens a menu over every command and asks only for
+                what the action needs — including an AI pass with the coding agent you already have.
+              </p>
+            </div>
+            <TerminalWindow title="atlas">
+              <span className="text-blue-400">$</span> <span className="text-white">atlas</span>
+              {'\n'}
+              <span className="text-stone-500">┌</span>  <span className="bg-cyan-400 px-1 text-stone-950">atlas</span> <span className="text-stone-500">v{version}</span>
+              {'\n'}
+              <span className="text-green-400">◇</span>  Project to scan <span className="text-stone-400">·</span> .
+              {'\n'}
+              <span className="text-cyan-400">◆</span>  What do you want to do?
+              {'\n'}
+              <span className="text-stone-500">│</span>  <span className="text-green-400">●</span> Open the dashboard <span className="text-stone-500">(analyze + browse)</span>
+              {'\n'}
+              <span className="text-stone-500">│</span>  <span className="text-stone-500">○</span> Describe assets with AI <span className="text-stone-500">(via Claude Code)</span>
+              {'\n'}
+              <span className="text-stone-500">│</span>  <span className="text-stone-500">○</span> Analyze · Search · Dead code · Graph…
+              {'\n'}
+              <span className="text-stone-500">└</span>
+            </TerminalWindow>
           </div>
         </div>
       </section>

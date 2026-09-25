@@ -24,8 +24,9 @@ export const metadata: Metadata = {
     title: 'Atlas — stop rebuilding what you already built',
     description:
       'Find every reusable React component, hook and util in your codebase — plus dead code, dependencies and architecture. Free, open source, zero config.',
+    images: [{ url: `${siteUrl}/og.png`, width: 1200, height: 630, alt: 'The Atlas dashboard Overview' }],
   },
-  twitter: { card: 'summary_large_image' },
+  twitter: { card: 'summary_large_image', images: [`${siteUrl}/og.png`] },
 };
 
 export const viewport: Viewport = {

@@ -27,6 +27,7 @@ import { analyzeArchitecture } from '../analysis/architecture';
 import { analyzeDependencies } from '../analysis/dependencies';
 import { analyzeStaticAssets } from '../analysis/staticAssets';
 import { describeAssets } from '../ai/describe';
+import { restoreSavedAnswers } from '../ai/handoff';
 import { buildSearchIndex } from '../search/searchIndex';
 import { loadPlugins } from '../plugins/loader';
 import { IncrementalCache, cachePathFor } from '../utils/cache';
@@ -94,6 +95,8 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
     const undocumented = assets.filter((a) => !a.description);
     if (undocumented.length) hooks.onDescribeProgress?.(0, undocumented.length);
     await describeAssets(undocumented, hooks.onDescribeProgress);
+    // Layer any saved agent descriptions (from `atlas describe`) back on top.
+    restoreSavedAnswers(assets, config.root, config.outDir);
   }
 
   phase('Building search index');

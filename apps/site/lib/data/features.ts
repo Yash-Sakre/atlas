@@ -19,6 +19,8 @@ export type DashboardView = {
   name: string;
   icon: LucideIcon;
   desc: string;
+  /** Screenshot pair in public/screenshots/ (`<shot>-light.webp` / `<shot>-dark.webp`). */
+  shot: string;
   /** Marks views added after the initial release, so the site can badge them. */
   isNew?: boolean;
 };
@@ -26,36 +28,42 @@ export type DashboardView = {
 export const DASHBOARD_VIEWS: DashboardView[] = [
   {
     id: 'overview',
+    shot: 'overview',
     name: 'Overview',
     icon: LayoutDashboard,
     desc: 'Project stats at a glance — asset counts, framework detection, most-used assets and the health of the codebase.',
   },
   {
     id: 'assets',
+    shot: 'components',
     name: 'Assets',
     icon: Boxes,
     desc: 'Every component, hook, util, context, store and route in one searchable, filterable list.',
   },
   {
     id: 'detail',
+    shot: 'hooks',
     name: 'Asset detail',
     icon: ScanSearch,
     desc: 'Props and parameters with resolved types, the generated description, and every location the asset is used.',
   },
   {
     id: 'routes',
+    shot: 'routes',
     name: 'Routes',
     icon: Signpost,
     desc: 'The route table for React Router, TanStack Router and the Next.js app / pages routers — including data-router config arrays.',
   },
   {
     id: 'dead-code',
+    shot: 'dead-code',
     name: 'Dead code',
     icon: Eraser,
     desc: 'Unused exports, orphan files and duplicate implementations, grouped so you can clean up in one pass.',
   },
   {
     id: 'dependencies',
+    shot: 'dependencies',
     name: 'Dependencies',
     icon: Package,
     desc: 'Every npm package you declare, with the installed version, how many files import it, and a live update check from the registry.',
@@ -63,6 +71,7 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
   },
   {
     id: 'static-assets',
+    shot: 'assets',
     name: 'Static assets',
     icon: Image,
     desc: 'Images, vectors, fonts, media and PDFs previewed from their real path on disk — with size, intrinsic dimensions, the URL public/ files are served at, and every reference from code, CSS and markup.',

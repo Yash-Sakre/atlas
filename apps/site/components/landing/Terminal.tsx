@@ -11,29 +11,31 @@ const TAG = 'text-violet-300';
 
 const ok = <span className={OK}>✓</span>;
 
+/* Mirrors the real scan behind the hero screenshots (`atlas serve` on this repo). */
 const LINES: ReactNode[] = [
   <>
     <span className={P}>$</span> <span className="text-white">npx codebase-atlas serve</span>
   </>,
-  <span className={DIM}>Scanning project… (509 files)</span>,
+  <span className={DIM}>Scanning project… (147 files)</span>,
   <>
-    {ok} Components <span className={TAG}>9</span>   {ok} Hooks <span className={TAG}>3</span>   {ok} Utils{' '}
-    <span className={TAG}>4</span>
+    {ok} Components <span className={TAG}>171</span>   {ok} Hooks <span className={TAG}>14</span>   {ok} Utils{' '}
+    <span className={TAG}>311</span>
   </>,
   <>
-    {ok} Contexts <span className={TAG}>2</span>   {ok} Routes <span className={TAG}>2</span>
+    {ok} Contexts <span className={TAG}>8</span>   {ok} Routes <span className={TAG}>25</span>
   </>,
   <>
-    {ok} Dependencies <span className={TAG}>31</span> packages · <span className={TAG}>4</span> outdated
+    {ok} Dependencies <span className={TAG}>44</span> packages · <span className={TAG}>7</span> updates available
   </>,
   <>
-    {ok} Static assets <span className={TAG}>46</span> files · <span className={TAG}>7.2 MB</span> on disk
+    {ok} Static assets <span className={TAG}>2</span> files · <span className={TAG}>3.5 KB</span> on disk
   </>,
   <>
-    <span className={WARN}>⚠</span> 3 unused exports · 2 orphan files · 5 unreferenced assets
+    <span className={WARN}>⚠</span> 7 unused exports · 3 orphan files · 33 duplicate candidates
   </>,
   <>
-    <span className={DIM}>Most used:</span> Button <span className={TAG}>5×</span> · TextInput <span className={TAG}>3×</span>
+    <span className={DIM}>Most used:</span> cn <span className={TAG}>78×</span> · Badge <span className={TAG}>48×</span> · Card{' '}
+    <span className={TAG}>32×</span>
   </>,
   <>
     <span className={DIM}>Wrote</span> .atlas/ <span className={DIM}>— 12 JSON files</span>

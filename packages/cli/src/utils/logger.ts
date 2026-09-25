@@ -45,17 +45,19 @@ export const logger = {
   /**
    * Start an inline spinner. Returns a stop function that also carries an
    * `.update(text)` method to change the label while it spins (e.g. live phase
-   * / progress). On a non-TTY it degrades to one static line and `.update()`
-   * is a no-op so logs stay clean.
+   * / progress). On a non-TTY it degrades to static start/finish lines and
+   * `.update()` is a no-op so logs stay clean.
    */
   spinner(text: string): Spinner {
     let label = text;
 
     if (!process.stdout.isTTY) {
       process.stdout.write(`${pc.dim('→')} ${text}\n`);
-      const noop = (() => {}) as Spinner;
-      noop.update = () => {};
-      return noop;
+      const done = ((finalText?: string) => {
+        if (finalText) process.stdout.write(`${pc.green('✓')} ${finalText}\n`);
+      }) as Spinner;
+      done.update = () => {};
+      return done;
     }
 
     let i = 0;

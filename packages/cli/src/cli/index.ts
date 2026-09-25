@@ -7,7 +7,13 @@ import { graphCommand } from './commands/graph';
 import { deadCodeCommand } from './commands/deadCode';
 import { searchCommand } from './commands/search';
 import { watchCommand } from './commands/watch';
-import { logger } from '../utils/logger';
+import { interactiveHome } from './interactive';
+import { logger, pc } from '../utils/logger';
+import { answer, isInteractive, prompts, PromptCancelled } from '../utils/prompts';
+
+/** The published package version (package.json sits two levels above src/ and dist/). */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const VERSION: string = require('../../package.json').version;
 
 export function buildCli(): Command {
   const program = new Command();
@@ -15,7 +21,14 @@ export function buildCli(): Command {
   program
     .name('atlas')
     .description('Atlas — discover, analyze & document reusable assets in a frontend codebase via AST semantics.')
-    .version('0.1.0', '-v, --version');
+    .version(VERSION, '-v, --version')
+    .addHelpText(
+      'after',
+      `\nRun ${pc.cyan('atlas')} with no arguments for an interactive menu.\n` +
+        `Quick start: ${pc.cyan('atlas serve')}  ·  AI descriptions: ${pc.cyan('atlas ai')}`,
+    )
+    // Bare `atlas`: the guided menu in a terminal, plain help everywhere else.
+    .action(() => (isInteractive() ? run(() => interactiveHome(VERSION)) : program.help()));
 
   const rootOpt = (cmd: Command) =>
     cmd
@@ -42,9 +55,16 @@ export function buildCli(): Command {
     );
 
   pathArg(rootOpt(program.command('describe')))
-    .description('Hand assets to a coding agent (claude/codex/cursor) for richer descriptions')
-    .option('--agent <name>', 'agent to hand off to: claude | codex | cursor')
-    .option('--apply', 'fold an agent\'s descriptions.json back into the analysis')
+    .alias('ai')
+    .description('Have Claude Code / Codex / Cursor write richer asset descriptions (interactive in a terminal)')
+    .option('-a, --agent <name>', 'run this agent without asking: claude | codex | cursor')
+    .option('-m, --model <model>', 'model to pass to the agent, e.g. sonnet, haiku')
+    .option('--only <kinds>', 'limit to asset kinds: component,hook,utility,context,route')
+    .option('--fresh', 're-describe assets that already have agent descriptions')
+    .option('--batch-size <n>', 'assets per agent call', '25')
+    .option('--concurrency <n>', 'agent calls to run in parallel', '2')
+    .option('-y, --yes', 'skip confirmation prompts')
+    .option('--apply', 'fold a hand-written .atlas/handoff/descriptions.json into the analysis')
     .option('--heuristic', 'regenerate the offline heuristic descriptions instead')
     .option('--no-run', 'write the hand-off packet but do not invoke the agent')
     .option('--copy', 'copy the agent instruction to the clipboard for a manual paste')
@@ -56,6 +76,12 @@ export function buildCli(): Command {
           outDir: opts.outDir,
           noCache: opts.cache === false,
           agent: opts.agent,
+          model: opts.model,
+          only: opts.only,
+          fresh: opts.fresh,
+          batchSize: opts.batchSize,
+          concurrency: opts.concurrency,
+          yes: opts.yes,
           apply: opts.apply,
           heuristic: opts.heuristic,
           run: opts.run,
@@ -66,6 +92,7 @@ export function buildCli(): Command {
 
   program
     .command('serve')
+    .alias('open')
     .description('Analyze and serve the interactive React dashboard at a local link')
     .argument('[root]', 'project root to analyze (alternative to --root)')
     .option('-r, --root <dir>', 'project root to analyze', process.cwd())
@@ -95,17 +122,25 @@ export function buildCli(): Command {
     .action((rootArg, opts) => run(() => graphCommand({ root: rootOf(rootArg, opts), outDir: opts.outDir, json: opts.json })));
 
   pathArg(rootOpt(program.command('dead-code')))
+    .alias('dead')
     .description('Report unused exports, orphan files and duplicate candidates')
     .option('--json', 'output as JSON')
     .action((rootArg, opts) => run(() => deadCodeCommand({ root: rootOf(rootArg, opts), outDir: opts.outDir, json: opts.json })));
 
   rootOpt(program.command('search'))
     .description('Fuzzy-search discovered assets')
-    .argument('<query>', 'search query, e.g. "authentication"')
+    .argument('[query]', 'search query, e.g. "authentication" (asked for when omitted)')
     .option('--json', 'output as JSON')
     .option('-n, --limit <n>', 'max results', '20')
-    .action((query, opts) =>
-      run(() => searchCommand(query, { root: opts.root, outDir: opts.outDir, json: opts.json, limit: opts.limit })),
+    .action((query: string | undefined, opts) =>
+      run(async () => {
+        if (!query) {
+          if (!isInteractive()) throw new Error('Missing search query, e.g. atlas search "auth"');
+          const p = await prompts();
+          query = await answer(p.text({ message: 'Search for…', placeholder: 'e.g. authentication, modal, useFetch' }));
+        }
+        await searchCommand(query, { root: opts.root, outDir: opts.outDir, json: opts.json, limit: opts.limit });
+      }),
     );
 
   pathArg(rootOpt(program.command('watch')))
@@ -119,6 +154,7 @@ async function run(fn: () => Promise<void>): Promise<void> {
   try {
     await fn();
   } catch (err) {
+    if (err instanceof PromptCancelled) return;
     logger.error((err as Error).stack ?? (err as Error).message);
     process.exitCode = 1;
   }

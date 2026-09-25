@@ -4,6 +4,12 @@ description: atlas serve opens a local React app over the analysis snapshot. Eve
 icon: LayoutDashboard
 ---
 
+import { BrowserFrame, Screenshot } from '@/components/landing/DashboardPreview';
+
+<BrowserFrame className="not-prose my-6">
+  <Screenshot view="overview" alt="The Overview view: asset counts, reuse rate, dead-code findings and dependencies above a reference-spread chart." />
+</BrowserFrame>
+
 ## The views
 
 | View | What it shows |
@@ -15,6 +21,43 @@ icon: LayoutDashboard
 | 🧹 **Dead code** | Unused exports, orphan files and duplicate implementations, grouped so you can clean up in one pass. |
 | 📦 **Dependencies** | Every npm package you declare, with the installed version, how many files import it, and a live update check from the registry. |
 | 🖼️ **Static assets** | Images, vectors, fonts, media and PDFs previewed from their real path on disk — with size, intrinsic dimensions, the URL `public/` files are served at, and every reference from code, CSS and markup. |
+
+## A closer look
+
+### Components, hooks and asset detail
+
+Every asset list pairs a searchable, filterable column with the selected asset's detail: its signature,
+props or parameters, the generated (or [agent-written](/docs/cli/describe)) description, when to use it
+and every place it's referenced.
+
+<BrowserFrame className="not-prose my-6">
+  <Screenshot view="components" alt="The Components view: a filterable list of components beside the ApiTab detail panel with its description, when to use it and responsibilities." />
+</BrowserFrame>
+
+### Routes
+
+Routes are grouped per app and nested by URL, for React Router, TanStack Router and both Next.js routers.
+
+<BrowserFrame className="not-prose my-6">
+  <Screenshot view="routes" alt="The Routes view: a tree of Next.js and React Router routes beside the detail of the root layout." />
+</BrowserFrame>
+
+### Dependencies
+
+<BrowserFrame className="not-prose my-6">
+  <Screenshot view="dependencies" alt="The Dependencies view: totals for packages, available updates and unused packages above a table of every npm dependency." />
+</BrowserFrame>
+
+### Dead code
+
+<BrowserFrame className="not-prose my-6">
+  <Screenshot view="dead-code" alt="The Dead code view: counts of unused exports, orphan files and duplicate groups above a table of unused exports." />
+</BrowserFrame>
+
+<Callout type="info" title="About these screenshots">
+  They show `atlas serve` run on the Atlas repository itself. The dashboard follows your system theme —
+  switch it from the bottom of the sidebar.
+</Callout>
 
 ## Serving it
 

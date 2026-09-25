@@ -7,7 +7,7 @@
  * the exact JSON the agent must return. {@link applyAnswers} ingests that JSON
  * back onto each asset's `.description`, stamped with the agent as `source`.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import type { AIDescription, Asset, DescriptionSource } from '../core/types';
 
@@ -18,8 +18,13 @@ export const HANDOFF_FILES = {
   answers: 'descriptions.json',
 } as const;
 
+/** Where the hand-off packet lives for a project: `<root>/<outDir>/handoff`. */
+export function handoffDir(root: string, outDir: string): string {
+  return join(root, outDir, 'handoff');
+}
+
 /** The slim, agent-facing view of one asset (no internal/derived noise). */
-interface AssetContext {
+export interface AssetContext {
   id: string;
   name: string;
   type: Asset['type'];
@@ -34,11 +39,15 @@ interface AssetContext {
   details: Record<string, unknown>;
 }
 
-/** Just the fields an agent fills in; the rest of {@link AIDescription} is derived. */
-export type AnswerDescription = Omit<AIDescription, 'dependencies' | 'source'>;
+/**
+ * Just the fields an agent fills in; the rest of {@link AIDescription} is
+ * derived. `source` is stamped by Atlas when it saves an agent's answer, so
+ * re-analysis can re-apply it with the right attribution.
+ */
+export type AnswerDescription = Omit<AIDescription, 'dependencies' | 'source'> & { source?: DescriptionSource };
 
 /** Pull out the bits of an asset that actually inform a description. */
-function toContext(asset: Asset): AssetContext {
+export function toContext(asset: Asset): AssetContext {
   const details: Record<string, unknown> = {};
   switch (asset.type) {
     case 'component':
@@ -86,6 +95,39 @@ function toContext(asset: Asset): AssetContext {
   };
 }
 
+/**
+ * The answer schema + writing rules, shared by the file-based hand-off
+ * (`PROMPT.md`) and the batched head-less runs. `deliver` says where the JSON
+ * goes; `inputName` names where the asset list comes from.
+ */
+export function answerSpec(deliver: string, inputName: string): string {
+  return `## What to produce
+
+${deliver} keyed by the asset \`id\` (copy the ids verbatim). Each value MUST match:
+
+\`\`\`json
+{
+  "<asset id>": {
+    "purpose": "ONE short sentence: what it is / does. For a component, say what it renders.",
+    "commonUsage": "A single idiomatic one-line usage snippet.",
+    "examples": ["One realistic example line"]
+  }
+}
+\`\`\`
+
+## Rules
+
+- Cover **every** id in ${inputName}. Do not invent ids.
+- \`purpose\` is **one sentence, ≤ 20 words**. No "This component…" preamble —
+  start with the verb (e.g. "Renders a paginated table of …").
+- Be specific to *this* code — reference real prop/param names. Generic
+  boilerplate ("a reusable React component") is worse than nothing.
+- \`commonUsage\` and \`examples\` are optional; include them only when they add
+  signal. Omit any field you'd leave generic — Atlas keeps its own value for it.
+- No markdown inside the JSON string values.
+`;
+}
+
 /** The instructions handed to the agent, with the answer schema spelled out. */
 function buildPrompt(assets: Asset[], label: string): string {
   return `# Atlas → ${label} documentation hand-off
@@ -104,32 +146,7 @@ an essay.
   count. Open the referenced source files only if the name + signature aren't
   enough to write one clear line.
 
-## What to produce
-
-Write \`${HANDOFF_FILES.answers}\` — a single JSON object keyed by the asset
-\`id\` (copy the ids verbatim). Each value MUST match:
-
-\`\`\`json
-{
-  "<asset id>": {
-    "purpose": "ONE short sentence: what it is / does. For a component, say what it renders.",
-    "commonUsage": "A single idiomatic one-line usage snippet.",
-    "examples": ["One realistic example line"]
-  }
-}
-\`\`\`
-
-## Rules
-
-- Cover **every** id in \`${HANDOFF_FILES.assets}\`. Do not invent ids.
-- \`purpose\` is **one sentence, ≤ 20 words**. No "This component…" preamble —
-  start with the verb (e.g. "Renders a paginated table of …").
-- Be specific to *this* code — reference real prop/param names. Generic
-  boilerplate ("a reusable React component") is worse than nothing.
-- \`commonUsage\` and \`examples\` are optional; include them only when they add
-  signal. Omit any field you'd leave generic — Atlas keeps its own value for it.
-- No markdown inside the JSON string values.
-- Output **only** valid JSON to \`${HANDOFF_FILES.answers}\` — no prose around it.
+${answerSpec(`Write \`${HANDOFF_FILES.answers}\` — a single JSON object`, `\`${HANDOFF_FILES.assets}\``)}- Output **only** valid JSON to \`${HANDOFF_FILES.answers}\` — no prose around it.
 
 When you are done, the developer will run \`atlas describe --apply\` to fold your
 descriptions into the dashboard.
@@ -211,9 +228,43 @@ export function applyAnswers(
       commonUsage: str(a.commonUsage, prev?.commonUsage ?? ''),
       examples: strList(a.examples).length ? strList(a.examples) : prev?.examples ?? [],
       improvements: strList(a.improvements).length ? strList(a.improvements) : prev?.improvements ?? [],
-      source,
+      source: isAgentSource(a.source) ? a.source : source,
     };
     applied += 1;
   }
   return applied;
+}
+
+function isAgentSource(value: unknown): value is Exclude<DescriptionSource, 'heuristic'> {
+  return value === 'claude' || value === 'codex' || value === 'cursor';
+}
+
+/**
+ * Merge `fresh` answers into the saved `descriptions.json`, stamping each with
+ * `source`. Written after every batch so an interrupted run loses nothing.
+ */
+export function saveAnswers(
+  file: string,
+  fresh: Record<string, Partial<AnswerDescription>>,
+  source: DescriptionSource,
+): Record<string, Partial<AnswerDescription>> {
+  const merged = existsSync(file) ? readAnswers(file) : {};
+  for (const [id, a] of Object.entries(fresh)) merged[id] = { ...a, source };
+  writeFileSync(file, JSON.stringify(merged, null, 2), 'utf8');
+  return merged;
+}
+
+/**
+ * Re-apply previously saved agent answers so a later `analyze` / `serve
+ * --reanalyze` keeps them instead of reverting to heuristic text. A missing or
+ * unreadable file is simply ignored. Returns how many assets were restored.
+ */
+export function restoreSavedAnswers(assets: Asset[], root: string, outDir: string): number {
+  const file = join(handoffDir(root, outDir), HANDOFF_FILES.answers);
+  if (!existsSync(file)) return 0;
+  try {
+    return applyAnswers(assets, readAnswers(file), 'claude');
+  } catch {
+    return 0;
+  }
 }

@@ -1,59 +1,134 @@
 ---
 title: atlas describe
-description: Generate richer docs — with or without an AI agent.
+description: Let Claude Code, Codex or Cursor write richer docs for every asset — or regenerate the offline ones.
 icon: Sparkles
 ---
 
 ```bash title="Usage"
 atlas describe [root] [options]
+atlas ai [root] [options]        # same command, shorter name
 ```
 
 ## Overview
 
-Atlas writes accurate, offline descriptions for every asset by default. Run `describe` to regenerate
-them, or hand the assets (with their AST context) to a coding agent like Claude, Codex or Cursor for
-richer prose, then fold the results back into the analysis.
+Atlas writes accurate, offline descriptions for every asset by default. `describe` goes further: it
+hands your assets (with their AST context) to a coding agent you already have installed — **Claude
+Code**, **Codex** or **Cursor** — and folds the agent's descriptions back into the analysis and the
+dashboard.
+
+Atlas itself never calls an LLM or needs an API key. It drives the agent's own CLI head-less with
+**read-only tools**: the agent can open source files to understand them, but it only prints JSON —
+Atlas writes the files.
+
+## Interactive mode
+
+Run it in a terminal with no flags and Atlas walks you through it:
+
+```bash
+atlas ai
+```
+
+```txt title="Terminal"
+◆  Who should write the descriptions?
+│  ● Claude Code (installed)
+│  ○ Codex CLI (not found — install `codex`)
+│  ○ Cursor Agent (not found — install `cursor-agent`)
+│  ○ Offline heuristic (instant, no AI)
+│  ○ Copy a prompt (paste into any other agent or chat)
+│
+◆  Which assets should it describe?
+│  ◼ Components (42)  ◼ Hooks (18)  ◼ Utilities (57)  ◼ Contexts & stores (6)  ◼ Routes (12)
+│
+◆  Which Claude model?
+│  ● Default   ○ Sonnet   ○ Haiku (fastest, cheapest)   ○ Opus
+│
+◆  Describe 135 assets with Claude Code — 6 batches, 2 at a time?
+│  Yes
+│
+✓ Claude Code described 135/135 assets in 2m 41s
+◆  Open the dashboard to see them?
+```
+
+Nothing is sent to the agent until you confirm.
+
+## Batched and resumable
+
+Assets are sent in small batches (25 per call, 2 calls in parallel by default) rather than one giant
+session, so large codebases don't overflow the agent's context. Every finished batch is saved
+immediately, which means:
+
+- **Ctrl+C is safe.** Run the same command again and Atlas resumes with only the assets still missing.
+- **Failures are isolated.** A batch whose reply can't be parsed is retried once; if it still fails,
+  those assets keep their heuristic description and the next run retries just them.
+- **Descriptions stick.** Later `atlas analyze`, `atlas watch` or `atlas serve --reanalyze` runs
+  re-apply the saved agent descriptions instead of reverting to heuristic text. Use `--fresh` to
+  regenerate them after big code changes.
 
 ## Options
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `--agent <name>` | | Agent to hand off to: `claude` \| `codex` \| `cursor`. |
-| `--apply` | | Fold an agent's `descriptions.json` back into the analysis. |
+| `-a, --agent <name>` | | Run this agent without asking: `claude` \| `codex` \| `cursor`. |
+| `-m, --model <model>` | | Model passed to the agent, e.g. `sonnet`, `haiku`, `opus`. |
+| `--only <kinds>` | all | Limit to asset kinds: `component,hook,utility,context,route` (plurals work too). |
+| `--fresh` | | Re-describe assets that already have agent descriptions. |
+| `--batch-size <n>` | `25` | Assets per agent call. |
+| `--concurrency <n>` | `2` | Agent calls to run in parallel. |
+| `-y, --yes` | | Skip all confirmation prompts (for scripts and CI). |
 | `--heuristic` | | Regenerate the offline heuristic descriptions instead of using an agent. |
-| `--no-run` | | Write the hand-off packet but do not invoke the agent. |
-| `--copy` | | Copy the agent instruction to the clipboard for a manual paste. |
+| `--copy` | | Copy an agent instruction to the clipboard for a manual paste. |
+| `--no-run` | | Write the hand-off packet and print the agent command, but don't invoke it. |
+| `--apply` | | Fold a hand-written `descriptions.json` into the analysis. |
 | `--no-cache` | | Disable the incremental cache. |
 | `-r, --root <dir>` | cwd | Project root to analyze. Also accepted as a positional path argument. |
 | `-o, --out-dir <dir>` | `.atlas` | Directory for analysis output and cache. |
 
-## The hand-off packet
+When stdout isn't a terminal (a pipe or CI) and no agent is named, `describe` never prompts — it
+writes the hand-off packet and prints the commands you can run instead.
 
-Without `--agent`, `describe` writes a packet and prints the commands to run it with each agent. The
-packet lives under `.atlas/handoff/`:
+## Where results live
 
 ```txt
 .atlas/handoff/
-├─ PROMPT.md          # instructions + the exact answer schema for the agent
-├─ assets.json        # every asset's id, kind, signature, props/params, usage
-└─ descriptions.json  # ← the agent writes this (one rich description per id)
+├─ descriptions.json  # every agent answer, keyed by asset id and stamped with its source
+├─ PROMPT.md          # manual hand-off only: instructions + answer schema
+└─ assets.json        # manual hand-off only: every asset's id, kind, signature, usage
 ```
 
-Each agent-authored description is tagged with its `source` (`claude` / `codex` / `cursor`); assets the
-agent skips keep their heuristic description as a fallback.
+Each agent-authored description is tagged with its `source` (`claude` / `codex` / `cursor`) so the
+dashboard badges it distinctly. Assets the agent skips keep their heuristic description as a fallback.
+Choosing `--heuristic` moves saved agent answers aside to `descriptions.json.bak` rather than deleting
+them.
+
+## Manual hand-off
+
+Prefer to drive the agent yourself, or use one Atlas doesn't know about? Use `--copy` (or pick **Copy a
+prompt**) and paste the instruction into any agent or chat. It points at `PROMPT.md` and `assets.json`
+and asks the agent to write `descriptions.json`. Then fold the result in:
+
+```bash
+atlas describe --apply
+```
 
 ## Examples
 
 ```bash
-# Regenerate offline descriptions, no network
+# Guided: pick an agent, scope and model
+atlas ai
+
+# Fully scripted with Claude's fastest model, components and hooks only
+atlas ai --agent claude --model haiku --only components,hooks --yes
+
+# Regenerate everything after a big refactor
+atlas ai --agent claude --fresh --yes
+
+# Bigger batches, more parallelism for a large repo
+atlas ai --agent codex --batch-size 40 --concurrency 4
+
+# Offline descriptions, no network
 atlas describe --heuristic
 
-# Run an agent end to end
-atlas describe --agent claude
-
-# Fold the agent output back in
-atlas describe --agent claude --apply
-
-# Write the packet but don't invoke the agent
-atlas describe --agent codex --no-run
+# Manual: copy the prompt, run it anywhere, then apply
+atlas describe --copy
+atlas describe --apply
 ```

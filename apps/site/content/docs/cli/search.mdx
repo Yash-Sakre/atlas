@@ -5,13 +5,15 @@ icon: Search
 ---
 
 ```bash title="Usage"
-atlas search <query> [options]
+atlas search [query] [options]
 ```
 
 ## Overview
 
 Searches across all detected components, hooks, utilities, contexts, stores and routes by name, path and
 signature (powered by Fuse.js). Find out whether something already exists before you build it again.
+
+Leave out the query in a terminal and Atlas asks for one.
 
 ```txt title="Output"
 ● AuthContext   [context]
@@ -35,4 +37,7 @@ signature (powered by Fuse.js). Find out whether something already exists before
 atlas search authentication
 atlas search "format date" --limit 5
 atlas search useAuth --json
+
+# Prompt for the query
+atlas search
 ```

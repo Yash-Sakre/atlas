@@ -4,6 +4,42 @@ description: Flags accepted by the root command and every subcommand, plus the t
 icon: SlidersHorizontal
 ---
 
+## Interactive mode
+
+Run `atlas` with no command in a terminal and you get a guided menu instead of the help text. It asks
+which project to scan, then lets you pick what to do — open the dashboard, describe assets with AI,
+analyze, search, report dead code, print the graph, export a static site or watch for changes — and only
+asks for what that action needs.
+
+```txt title="Terminal"
+$ atlas
+┌   atlas  v1.0.0
+│
+◇  Project to scan
+│  .
+│
+◆  What do you want to do?
+│  ● Open the dashboard (analyze + browse in your browser)
+│  ○ Describe assets with AI (via Claude Code)
+│  ○ Analyze
+│  ○ Search assets
+│  ○ Dead-code report
+│  ○ Dependency graph
+│  ○ Export a static site
+│  ○ Watch for changes
+```
+
+Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>C</kbd> at any prompt to cancel. Outside a terminal (pipes,
+CI) `atlas` prints its help instead, so scripts never hang on a prompt.
+
+## Command aliases
+
+| Alias | Same as |
+| --- | --- |
+| `atlas ai` | [`atlas describe`](/docs/cli/describe) |
+| `atlas open` | [`atlas serve`](/docs/cli/serve) |
+| `atlas dead` | [`atlas dead-code`](/docs/cli/dead-code) |
+
 ## Global flags
 
 | Flag | Description |
