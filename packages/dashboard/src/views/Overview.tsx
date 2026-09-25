@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { SegmentMeter, type Segment } from '@/components/ui/segment-meter';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
-import UsageCurve from '@/components/charts/UsageCurve';
+import ReferenceHistogram, { bucketize } from '@/components/charts/ReferenceHistogram';
 import ReuseByType, { REUSE_SERIES } from '@/components/charts/ReuseByType';
 import { formatBytes } from '../lib/assetFile';
 import { cn } from '@/lib/utils';
@@ -45,20 +45,19 @@ export default function Overview() {
     return { reused, once, unused: total - reused - once, total, pct: total ? Math.round((reused / total) * 100) : 0 };
   }, [reusable]);
 
-  // ── Reference curve ──
+  // ── Reference spread ──
   const [curve, setCurve] = useState<CurveFilter>('all');
-  const curveData = useMemo(() => {
+  const counts = useMemo(() => {
     const pool = curve === 'all' ? reusable : ((data[curve] as Asset[]) || []);
-    return pool
-      .filter((a) => (a.usageCount || 0) > 0)
-      .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
-      .map((a) => ({ name: a.name, refs: a.usageCount || 0 }));
+    return pool.map((a) => a.usageCount || 0).sort((a, b) => b - a);
   }, [curve, reusable, data]);
-  const totalRefs = curveData.reduce((a, d) => a + d.refs, 0);
-  // Concentration: share of references held by the top 10% of assets.
-  const topTenth = Math.max(1, Math.ceil(curveData.length * 0.1));
+  const buckets = useMemo(() => bucketize(counts), [counts]);
+  const totalRefs = counts.reduce((a, n) => a + n, 0);
+  const referenced = counts.filter((n) => n > 0);
+  // Concentration: share of references held by the top 10% of referenced assets.
+  const topTenth = Math.max(1, Math.ceil(referenced.length * 0.1));
   const topShare = totalRefs
-    ? Math.round((curveData.slice(0, topTenth).reduce((a, d) => a + d.refs, 0) / totalRefs) * 100)
+    ? Math.round((referenced.slice(0, topTenth).reduce((a, n) => a + n, 0) / totalRefs) * 100)
     : 0;
 
   // ── Reuse by type ──
@@ -161,26 +160,32 @@ export default function Overview() {
           />
         </div>
 
-        {/* ── Reference curve (hero) ── */}
+        {/* ── Reference spread (hero) ── */}
         <Card>
           <CardHeader className="flex-wrap items-start">
             <div className="min-w-0">
               <CardTitle
                 info={
                   <InfoTip>
-                    Every referenced asset, ranked from most to least used. A steep head means a few
-                    assets carry the codebase; a long flat tail means wide, shallow reuse.
+                    How many assets are referenced from how many places. Weight on the left means
+                    shallow reuse; bars on the right are the load-bearing assets.
                   </InfoTip>
                 }
               >
-                References by asset
+                Reference spread
               </CardTitle>
               <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="text-[30px] leading-none font-semibold tracking-[-0.03em] tabular-nums">
                   {totalRefs.toLocaleString()}
                 </span>
                 <span className="text-[12.5px] text-ink-faint">
-                  references across {curveData.length} assets
+                  references across {counts.length} assets
+                  {referenced.length > 0 && (
+                    <>
+                      {' · '}top 10% hold{' '}
+                      <b className="font-medium text-ink-muted">{topShare}%</b>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -198,21 +203,16 @@ export default function Overview() {
             </CardAction>
           </CardHeader>
           <CardContent className="pt-4">
-            {curveData.length > 1 ? (
+            {counts.length > 0 ? (
               <>
-                <UsageCurve key={curve} data={curveData} />
-                <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">
-                  <span>Most referenced</span>
-                  <span className="hidden sm:inline">
-                    Top 10% of assets hold{' '}
-                    <b className="font-medium text-ink-muted">{topShare}%</b> of references
-                  </span>
-                  <span>Least referenced</span>
-                </div>
+                <ReferenceHistogram key={curve} data={buckets} />
+                <p className="m-0 mt-2 text-center text-[11.5px] text-ink-faint">
+                  Assets grouped by how many places reference them
+                </p>
               </>
             ) : (
-              <EmptyState title="Not enough references to plot">
-                Fewer than two assets of this type are referenced anywhere.
+              <EmptyState title="No assets of this type">
+                Nothing of this kind was found in the scanned source.
               </EmptyState>
             )}
           </CardContent>

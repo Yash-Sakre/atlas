@@ -38,7 +38,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const KIND_ICON: Record<StaticAssetKind, PhosphorIcon> = {
@@ -437,13 +436,13 @@ function Lightbox({ asset, root }: { asset: StaticAsset; root?: string }) {
               Open file
             </a>
           </Button>
-          <Tooltip content="Close (Esc)">
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" aria-label="Close">
-                <X size={16} />
-              </Button>
-            </DialogClose>
-          </Tooltip>
+          {/* No tooltip: the dialog auto-focuses this button on open, which
+              would pop the tooltip immediately. */}
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" aria-label="Close">
+              <X size={15} weight="bold" />
+            </Button>
+          </DialogClose>
         </div>
       </header>
 
