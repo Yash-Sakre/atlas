@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import ReferenceHistogram, { bucketize } from '@/components/charts/ReferenceHistogram';
 import ReuseByType, { REUSE_SERIES } from '@/components/charts/ReuseByType';
 import { formatBytes } from '../lib/assetFile';
+import { isUnusedDep } from '../lib/npm';
 import { cn } from '@/lib/utils';
 
 type Collection = 'components' | 'hooks' | 'utils' | 'contexts' | 'routes';
@@ -81,7 +82,7 @@ export default function Overview() {
 
   const deps = data.dependencies?.dependencies || [];
   const depCounts = data.dependencies?.counts;
-  const depUnused = deps.filter((d) => (d.usedInCount || 0) === 0).length;
+  const depUnused = deps.filter(isUnusedDep).length;
 
   const sa = data.staticAssets?.counts;
 
@@ -113,7 +114,7 @@ export default function Overview() {
               {folderName(data.meta.root)}
             </span>
             {' · '}
-            {reusable.length} reusable assets across {s.fileCount} files{' · '}
+            {reusable.length.toLocaleString()} code assets across {s.fileCount.toLocaleString()} files{' · '}
             <span title={formatTime(data.meta.generatedAt)}>analyzed {timeAgo(data.meta.generatedAt)}</span>
           </>
         }
@@ -123,9 +124,19 @@ export default function Overview() {
         {/* ── KPI row ── */}
         <div className="grid grid-cols-4 gap-3 sm:gap-4 max-[1180px]:grid-cols-2">
           <StatCard
-            label="Reusable assets"
+            label="Code assets"
+            info={
+              <>
+                Every component, hook, util and context/store Atlas found — used or not. Routes and static
+                files aren’t counted.
+                <span className="mt-1.5 block tabular-nums">
+                  {s.components.toLocaleString()} components + {s.hooks.toLocaleString()} hooks +{' '}
+                  {s.utils.toLocaleString()} utils + {s.contexts.toLocaleString()} contexts/stores
+                </span>
+              </>
+            }
             value={compact(reusable.length)}
-            hint={`${s.components} components · ${s.hooks} hooks`}
+            hint="components · hooks · utils · stores"
             to="/components"
           />
           <StatCard
@@ -254,7 +265,7 @@ export default function Overview() {
                         value: (depCounts?.peer || 0) + (depCounts?.optional || 0),
                         color: 'var(--color-chart-3)',
                       },
-                      { key: 'unused', label: 'Never imported', value: depUnused, color: 'var(--color-surface-3)', excluded: true },
+                      { key: 'unused', label: 'Unused', value: depUnused, color: 'var(--color-surface-3)', excluded: true },
                     ]}
                     unit="packages"
                   />

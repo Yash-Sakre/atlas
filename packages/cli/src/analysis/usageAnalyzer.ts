@@ -28,7 +28,16 @@ const DECL_PARENT_KINDS = new Set<SyntaxKind>([
   SyntaxKind.PropertySignature,
 ]);
 
-export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
+export interface UsageResult {
+  /**
+   * Files that export something another file imports but that isn't an asset
+   * (a constant, a config object, a type). Those imports can't be counted, so
+   * such files must never be reported as orphans.
+   */
+  untrackedImportTargets: Set<string>;
+}
+
+export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): UsageResult {
   // Reset accumulators so re-runs (and cache-restored assets) don't double-count.
   for (const a of assets) {
     a.usedIn = [];
@@ -50,6 +59,8 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
     idsByFile.set(a.path, inFile);
   }
 
+  const untrackedImportTargets = new Set<string>();
+
   // dependency sets keyed by asset id (de-duped)
   const deps = new Map<string, Set<string>>();
   for (const a of assets) deps.set(a.id, new Set());
@@ -62,6 +73,7 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
       relF,
       byFileName,
       defaultByFile,
+      untrackedImportTargets,
     );
     if (bindings.size === 0 && namespaces.size === 0 && direct.length === 0 && loads.length === 0) {
       continue;
@@ -105,6 +117,8 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
         if (parent && DECL_PARENT_KINDS.has(parent.getKind()) && isNamePosition(id, parent)) continue;
         // Skip the property name of `a.b` access (only the object matters).
         if (parent && Node.isPropertyAccessExpression(parent) && parent.getNameNode() === id) continue;
+        // `export default X` / `export { X }` publish a name; they don't use it.
+        if (parent && (Node.isExportAssignment(parent) || Node.isExportSpecifier(parent))) continue;
         record(targetId, id);
         continue;
       }
@@ -132,6 +146,7 @@ export function analyzeUsage(assets: Asset[], ctx: ExtractionContext): void {
     a.usageCount = a.usedIn.length;
     a.dependencies = [...(deps.get(a.id) ?? [])];
   }
+  return { untrackedImportTargets };
 }
 
 interface FileBindings {
@@ -151,6 +166,7 @@ function buildBindings(
   relF: string,
   byFileName: Map<string, string>,
   defaultByFile: Map<string, string>,
+  untrackedImportTargets: Set<string>,
 ): FileBindings {
   const bindings = new Map<string, string>();
   const namespaces = new Map<string, { file: SourceFile; targetRel: string }>();
@@ -184,15 +200,20 @@ function buildBindings(
       // the chain to the file where it is actually declared.
       if (!id) id = resolveReExport(tf, importedName, ctx, byFileName);
       if (id) bindings.set(local, id);
+      else markUntracked(tf, importedName, ctx, untrackedImportTargets);
     }
     const def = imp.getDefaultImport();
     if (def) {
       const id = defaultByFile.get(targetRel) ?? resolveReExport(tf, 'default', ctx, byFileName);
       if (id) bindings.set(def.getText(), id);
+      else markUntracked(tf, 'default', ctx, untrackedImportTargets);
     }
     // `import * as NS from 'm'` — usage shows up later as `NS.member`.
     const ns = imp.getNamespaceImport();
-    if (ns) namespaces.set(ns.getText(), { file: tf, targetRel });
+    if (ns) {
+      namespaces.set(ns.getText(), { file: tf, targetRel });
+      untrackedImportTargets.add(targetRel);
+    }
   }
 
   // Dynamic loads: `await import()`, `lazy(() => import())`, `require()`, …
@@ -260,6 +281,21 @@ function resolveReExport(
     if (id) return id;
   }
   return undefined;
+}
+
+/** Record the file(s) that actually declare `name` exported from `file`. */
+function markUntracked(file: SourceFile, name: string, ctx: ExtractionContext, out: Set<string>): void {
+  let decls: Node[] | undefined;
+  try {
+    decls = file.getExportedDeclarations().get(name);
+  } catch {
+    /* unresolvable */
+  }
+  if (!decls?.length) {
+    out.add(rel(ctx.root, file.getFilePath()));
+    return;
+  }
+  for (const d of decls) out.add(rel(ctx.root, d.getSourceFile().getFilePath()));
 }
 
 function isNamePosition(id: Node, parent: Node): boolean {

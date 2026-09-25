@@ -2,8 +2,9 @@
  * Utility extractor.
  *
  * A utility is any top-level function-like symbol that the other extractors did
- * NOT claim — i.e. it does not render JSX (not a component) and is not named
- * `use*` (not a hook). Kind is inferred from the signature, never the path.
+ * NOT claim — i.e. it is not a PascalCase function rendering JSX (a component)
+ * and is not named `use*` (a hook). A camelCase helper that builds JSX
+ * (`renderCell`, `buildColumns`) is still a utility. Kind is inferred from the signature, never the path.
  */
 import { Node, type SourceFile } from 'ts-morph';
 import type { Extractor, ExtractionContext, UtilAsset, UtilKind } from '../core/types';
@@ -33,7 +34,7 @@ export class UtilExtractor implements Extractor<UtilAsset> {
 
     const consider = (name: string, fn: FunctionLike, node: Node, isAsync: boolean) => {
       if (isHookName(name)) return; // hook
-      if (returnsJSX(fn)) return; // component
+      if (isPascalCase(name) && returnsJSX(fn)) return; // component
       if (isPascalCase(name) && fn.getParameters().length === 0) return; // likely a component shell
       out.push(this.build(name, fn, node, relPath, ctx, isAsync));
     };

@@ -21,7 +21,7 @@ import {
   TextAa,
   Warning,
   WarningCircle,
-  X,
+  XIcon,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react';
 import { useData } from '../data';
@@ -440,7 +440,7 @@ function Lightbox({ asset, root }: { asset: StaticAsset; root?: string }) {
               would pop the tooltip immediately. */}
           <DialogClose asChild>
             <Button variant="ghost" size="icon" aria-label="Close">
-              <X size={15} weight="bold" />
+              <XIcon size={15} weight="bold" />
             </Button>
           </DialogClose>
         </div>

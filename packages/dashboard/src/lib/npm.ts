@@ -26,6 +26,22 @@ export function classifySource(range: string): DependencySource {
   return 'registry';
 }
 
+/** Declared but neither imported nor run/configured as a tool. */
+export function isUnusedDep(dep: DependencyInfo): boolean {
+  return !(dep.usedInCount || 0) && !dep.toolingUse?.length;
+}
+
+const TOOLING_LABEL: Record<string, string> = {
+  script: 'run from a package.json script',
+  config: 'referenced by a tool config',
+  types: 'type definitions for the compiler',
+};
+
+/** Human description of a package's non-import usage, e.g. "run from a package.json script". */
+export function toolingLabel(dep: DependencyInfo): string {
+  return (dep.toolingUse || []).map((u) => TOOLING_LABEL[u] ?? u).join(' · ');
+}
+
 /** Resolved source for a dependency (prefers the analyzer's value). */
 export function sourceOf(dep: DependencyInfo): DependencySource {
   return dep.source ?? classifySource(dep.range);

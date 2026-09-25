@@ -5,7 +5,8 @@
  * was imported from — never by file name:
  *   - createContext(...)            → react-context
  *   - <X.Provider> in a component   → provider
- *   - create(...) from 'zustand'    → zustand store
+ *   - create(...) from 'zustand'    → zustand store (also via a local wrapper
+ *                                     module that itself builds on zustand)
  *   - createSlice(...) from RTK     → redux-slice
  *   - atom(...) from 'jotai'        → jotai-atom
  *   - atom(...) from 'recoil'       → recoil-atom
@@ -33,6 +34,46 @@ function importMap(file: SourceFile): Map<string, string> {
   return map;
 }
 
+const ZUSTAND = new Set(['zustand', 'zustand/vanilla']);
+
+/**
+ * Names in this file imported from a *local* module whose declaration builds
+ * on zustand — e.g. a project `createStore.js` that wraps `create` to register
+ * resetters. Calls to those are store factories too.
+ */
+function localZustandFactories(file: SourceFile): Set<string> {
+  const out = new Set<string>();
+  for (const imp of file.getImportDeclarations()) {
+    if (ZUSTAND.has(imp.getModuleSpecifierValue())) continue;
+    let target: SourceFile | undefined;
+    try {
+      target = imp.getModuleSpecifierSourceFile();
+    } catch {
+      /* unresolved */
+    }
+    if (!target || target.isInNodeModules()) continue;
+    const check = (imported: string, local: string) => {
+      let decls;
+      try {
+        decls = target!.getExportedDeclarations().get(imported);
+      } catch {
+        return;
+      }
+      if (decls?.some((d) => importsZustand(d.getSourceFile()))) out.add(local);
+    };
+    const def = imp.getDefaultImport();
+    if (def) check('default', def.getText());
+    for (const named of imp.getNamedImports()) {
+      check(named.getName(), named.getAliasNode()?.getText() ?? named.getName());
+    }
+  }
+  return out;
+}
+
+function importsZustand(file: SourceFile): boolean {
+  return file.getImportDeclarations().some((i) => ZUSTAND.has(i.getModuleSpecifierValue()));
+}
+
 function calleeName(decl: VariableDeclaration): { name: string; node: Node } | null {
   const init = decl.getInitializer();
   if (!init || !Node.isCallExpression(init)) return null;
@@ -40,10 +81,16 @@ function calleeName(decl: VariableDeclaration): { name: string; node: Node } | n
   return { name: expr.getText(), node: init };
 }
 
-function classify(callee: string, imports: Map<string, string>): { kind: StateKind; type: ContextAsset['type'] } | null {
+function classify(
+  callee: string,
+  imports: Map<string, string>,
+  zustandFactories: Set<string>,
+): { kind: StateKind; type: ContextAsset['type'] } | null {
   const base = callee.split('.').pop() ?? callee;
   const root = callee.split('.')[0];
   const mod = imports.get(base) ?? imports.get(root);
+
+  if (callee === base && zustandFactories.has(base)) return { kind: 'zustand', type: 'store' };
 
   if (base === 'createContext' && mod === 'react') return { kind: 'react-context', type: 'context' };
   if (base === 'create' && mod === 'zustand') return { kind: 'zustand', type: 'store' };
@@ -110,6 +157,7 @@ export class ContextExtractor implements Extractor<ContextAsset> {
   extract(file: SourceFile, ctx: ExtractionContext): ContextAsset[] {
     const relPath = rel(ctx.root, file.getFilePath());
     const imports = importMap(file);
+    const zustandFactories = localZustandFactories(file);
     const out: ContextAsset[] = [];
     const seen = new Set<string>();
 
@@ -117,7 +165,7 @@ export class ContextExtractor implements Extractor<ContextAsset> {
     for (const decl of file.getVariableDeclarations()) {
       const callee = calleeName(decl);
       if (!callee) continue;
-      const cls = classify(callee.name, imports);
+      const cls = classify(callee.name, imports, zustandFactories);
       if (!cls) continue;
       const name = decl.getName();
       if (seen.has(name)) continue;

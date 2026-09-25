@@ -64,7 +64,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   resolveDefaultExports(assets, ctx);
 
   phase('Analyzing usage');
-  analyzeUsage(assets, ctx);
+  const usage = analyzeUsage(assets, ctx);
 
   const components = assets.filter((a): a is ComponentAsset => a.type === 'component');
   const hooksList = assets.filter((a): a is HookAsset => a.type === 'hook');
@@ -78,7 +78,7 @@ export async function runAnalysis(config: ResolvedConfig, hooks: AnalyzeHooks = 
   const graph = buildGraph(assets);
 
   phase('Detecting dead code');
-  const deadCode = analyzeDeadCode(assets, routes);
+  const deadCode = analyzeDeadCode(assets, routes, usage.untrackedImportTargets);
 
   phase('Analyzing architecture');
   const architecture = analyzeArchitecture(assets, config);

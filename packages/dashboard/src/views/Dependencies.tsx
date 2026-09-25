@@ -23,7 +23,7 @@ import {
 import { useData } from '../data';
 import type { DependencyInfo, DependencyKind, DependencySource } from '../types';
 import { FilterCount, SearchField, TABLE_CLASS, useSearch } from '../ui';
-import { useNpmRegistry, isOutdated, sourceOf, SOURCE_LABEL, type NpmMeta } from '../lib/npm';
+import { useNpmRegistry, isOutdated, isUnusedDep, sourceOf, SOURCE_LABEL, toolingLabel, type NpmMeta } from '../lib/npm';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
@@ -99,7 +99,7 @@ export default function Dependencies() {
     let base = search(query);
     if (kindFilter.length) base = base.filter((d) => kindFilter.includes(d.kind));
     if (flags.includes('outdated')) base = base.filter((d) => outdatedSet.has(d.name));
-    if (flags.includes('unused')) base = base.filter((d) => d.usedInCount === 0);
+    if (flags.includes('unused')) base = base.filter(isUnusedDep);
     if (sort) {
       const sign = sort.dir === 'asc' ? 1 : -1;
       base.sort((a, b) =>
@@ -140,7 +140,7 @@ export default function Dependencies() {
   }
 
   const c = report.counts;
-  const unused = deps.filter((d) => d.usedInCount === 0).length;
+  const unused = deps.filter(isUnusedDep).length;
   const nonRegistry = deps.filter((d) => sourceOf(d) !== 'registry');
   const bySource = new Map<DependencySource, number>();
   for (const d of nonRegistry) bySource.set(sourceOf(d), (bySource.get(sourceOf(d)) || 0) + 1);
@@ -405,6 +405,8 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
           <span title={`Imported in ${dep.usedInCount} file${dep.usedInCount === 1 ? '' : 's'}`}>
             {dep.usedInCount} file{dep.usedInCount === 1 ? '' : 's'}
           </span>
+        ) : dep.toolingUse?.length ? (
+          <Badge title={`Not imported — ${toolingLabel(dep)}`}>Tooling</Badge>
         ) : (
           <Badge variant="warn" title="Declared but never imported">
             <Warning size={11} weight="fill" />

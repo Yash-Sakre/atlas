@@ -39,8 +39,12 @@ const KIND_BY_EXT: Record<string, StaticAssetKind> = {
 
 const KIND_ORDER: StaticAssetKind[] = ['image', 'vector', 'font', 'video', 'audio', 'document'];
 
-/** Non-source files that can still reference an asset (styles, markup, docs). */
-const REFERENCING_GLOB = '**/*.{css,scss,sass,less,styl,html,htm,vue,svelte,astro,mdx,md,webmanifest}';
+/**
+ * Non-source files that can still reference an asset (styles, markup, MDX
+ * pages). Plain `.md` is left out: a README or audit note mentioning a file
+ * doesn't ship it, and counting it would hide genuinely unreferenced assets.
+ */
+const REFERENCING_GLOB = '**/*.{css,scss,sass,less,styl,html,htm,vue,svelte,astro,mdx,webmanifest}';
 
 /** Directories that are never part of a project's own asset set. */
 const ALWAYS_IGNORE = ['**/node_modules/**', '**/.git/**'];

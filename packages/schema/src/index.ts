@@ -254,6 +254,8 @@ export type DependencyKind = 'prod' | 'dev' | 'peer' | 'optional';
 export type DependencySource = 'registry' | 'file' | 'git' | 'workspace' | 'url';
 
 /** A single third-party package declared in the project's package.json(s). */
+export type DependencyToolingUse = 'script' | 'config' | 'types';
+
 export interface DependencyInfo {
   name: string;
   /** Declared version range, e.g. "^12.1.0" or "file:.yalc/pkg". */
@@ -265,6 +267,13 @@ export interface DependencyInfo {
   source: DependencySource;
   /** How many source files import this package (bare-specifier imports). */
   usedInCount: number;
+  /**
+   * Non-import ways the project uses the package: a binary run from a
+   * package.json script, a name in a tool config (`postcss.config.cjs`, …), or
+   * a `@types/*` package the compiler picks up. A package with any of these is
+   * not unused even when `usedInCount` is 0.
+   */
+  toolingUse?: DependencyToolingUse[];
   /** Workspace package that declares it (monorepo); undefined = repo root. */
   workspace?: string;
   /** Canonical npmjs.com package page — only for registry packages. */

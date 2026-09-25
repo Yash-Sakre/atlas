@@ -7,7 +7,7 @@
  * metadata (description, latest version, "update available") is fetched live
  * from the npm registry by the dashboard.
  */
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import type { SourceFile } from 'ts-morph';
 import type {
@@ -15,6 +15,7 @@ import type {
   DependencyKind,
   DependencyReport,
   DependencySource,
+  DependencyToolingUse,
   ExtractionContext,
   ResolvedConfig,
 } from '../core/types';
@@ -92,6 +93,79 @@ function installedVersion(root: string, name: string): string | undefined {
   return typeof pkg?.version === 'string' ? pkg.version : undefined;
 }
 
+/** Root-level tool configs that name packages without importing them. */
+const CONFIG_FILE = /^(?:[\w.-]+\.config\.(?:[cm]?[jt]s|json)|\.(?:babel|postcss|eslint|prettier|stylelint|swc|lintstaged)rc(?:\.[\w]+)?|babel\.config\.json|biome\.jsonc?|tsconfig(?:\.[\w-]+)?\.json)$/;
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Command names a package installs (`bin`), falling back to its own name. */
+function binNames(root: string, name: string): string[] {
+  const pkg = readPkg(join(root, 'node_modules', ...name.split('/')));
+  const bin = pkg?.bin;
+  if (typeof bin === 'string') return [name.split('/').pop()!];
+  if (bin && typeof bin === 'object') return Object.keys(bin);
+  return [name.split('/').pop()!];
+}
+
+interface ConfigFile {
+  file: string;
+  text: string;
+}
+
+/** Every tool config file directly inside `dir`. */
+function readConfigFiles(dir: string): ConfigFile[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const out: ConfigFile[] = [];
+  for (const f of entries) {
+    if (!CONFIG_FILE.test(f)) continue;
+    try {
+      out.push({ file: f, text: readFileSync(join(dir, f), 'utf8') });
+    } catch {
+      /* unreadable */
+    }
+  }
+  return out;
+}
+
+/** The tool a config file configures: `postcss.config.cjs` → postcss, `.babelrc` → babel. */
+function configTool(file: string): string {
+  return file.replace(/^\./, '').replace(/(?:\.config)?(?:rc)?(?:\.[\w]+)*$/, '');
+}
+
+/**
+ * How a package is used other than by `import`: run from a package.json
+ * script, named in or owning a tool config (`plugins: { tailwindcss: {} }`,
+ * `postcss.config.cjs`), or a `@types/*` package the compiler loads implicitly.
+ */
+function toolingUseOf(
+  name: string,
+  root: string,
+  scripts: string[],
+  configs: ConfigFile[],
+): DependencyToolingUse[] {
+  const out: DependencyToolingUse[] = [];
+  if (name.startsWith('@types/')) out.push('types');
+
+  const cmd = binNames(root, name).map(escapeRe).join('|');
+  const cmdRe = new RegExp(`(?:^|[\\s;&|(])(?:npx\\s+|pnpm\\s+(?:exec\\s+)?|yarn\\s+)?(?:${cmd})(?=$|[\\s;&|)])`);
+  if (scripts.some((s) => cmdRe.test(s))) out.push('script');
+
+  const n = escapeRe(name);
+  // A quoted name/sub-path (`'@vitejs/plugin-react'`, `"prettier-plugin-x"`) or
+  // a bare object key (`tailwindcss: {}`).
+  const cfgRe = new RegExp(`['"\`]${n}(?:/[^'"\`]*)?['"\`]|(?:^|[\\s{,])${n}\\s*:`, 'm');
+  const tool = name.split('/').pop()!;
+  if (configs.some((c) => configTool(c.file) === tool || cfgRe.test(c.text))) out.push('config');
+  return out;
+}
+
 export function analyzeDependencies(ctx: ExtractionContext, config: ResolvedConfig): DependencyReport {
   const usage = countImportsByPackage(ctx.sourceFiles);
 
@@ -108,9 +182,15 @@ export function analyzeDependencies(ctx: ExtractionContext, config: ResolvedConf
   const byName = new Map<string, DependencyInfo>();
   const rank = (k: DependencyKind) => KIND_SECTIONS.findIndex((s) => s.kind === k);
 
+  const scripts: string[] = [];
+  const configs: ConfigFile[] = [];
   for (const { dir, workspace } of sources) {
     const pkg = readPkg(dir);
     if (!pkg) continue;
+    if (pkg.scripts && typeof pkg.scripts === 'object') {
+      scripts.push(...Object.values(pkg.scripts).filter((v): v is string => typeof v === 'string'));
+    }
+    configs.push(...readConfigFiles(dir));
     for (const { section, kind } of KIND_SECTIONS) {
       const deps = pkg[section] as Record<string, string> | undefined;
       if (!deps) continue;
@@ -143,10 +223,14 @@ export function analyzeDependencies(ctx: ExtractionContext, config: ResolvedConf
     }
   }
 
-  const dependencies = [...byName.values()].map((d) => ({
-    ...d,
-    usedInCount: usage.get(d.name) ?? 0,
-  }));
+  const dependencies = [...byName.values()].map((d) => {
+    const toolingUse = toolingUseOf(d.name, config.root, scripts, configs);
+    return {
+      ...d,
+      usedInCount: usage.get(d.name) ?? 0,
+      ...(toolingUse.length ? { toolingUse } : {}),
+    };
+  });
   dependencies.sort((a, b) => a.name.localeCompare(b.name));
 
   const counts = { prod: 0, dev: 0, peer: 0, optional: 0, total: dependencies.length };

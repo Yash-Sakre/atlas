@@ -3,8 +3,9 @@
  *
  * The `use*` prefix is React's own semantic contract for hooks (enforced by the
  * rules-of-hooks), so it is a legitimate semantic signal — not a folder
- * convention. We additionally require the symbol to be a function and to not
- * render JSX (that would make it a component).
+ * convention. We additionally require the symbol to be a function. JSX in the
+ * body doesn't disqualify it: components must be PascalCase, so a `use*`
+ * function that builds JSX (e.g. tree-node titles) is still a hook.
  */
 import { Node, type SourceFile } from 'ts-morph';
 import type { Extractor, ExtractionContext, HookAsset } from '../core/types';
@@ -18,7 +19,6 @@ import {
   isHookName,
   location,
   makeId,
-  returnsJSX,
   type FunctionLike,
 } from './ast-utils';
 
@@ -49,7 +49,6 @@ export class HookExtractor implements Extractor<HookAsset> {
 
     const consider = (name: string, fn: FunctionLike, node: Node) => {
       if (!isHookName(name)) return;
-      if (returnsJSX(fn)) return; // it's a component, not a hook
       out.push(this.build(name, fn, node, relPath, ctx));
     };
 

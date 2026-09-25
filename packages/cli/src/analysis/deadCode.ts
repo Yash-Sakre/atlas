@@ -7,9 +7,16 @@ import type {
   RouteAsset,
 } from '../core/types';
 
-const ENTRY_BASENAMES = /(?:^|\/)(main|index|app|_app|_document|root|server|middleware)\.(t|j)sx?$/i;
+// Entry files live at the project (or workspace) root or directly in its
+// `src/` — not every nested `index.js` barrel, whose unused exports are real.
+const ENTRY_BASENAMES =
+  /^(?:(?:apps|packages|services|libs|modules|examples)\/[^/]+\/)?(?:src\/)?(main|index|app|_app|_document|root|server|middleware)\.(t|j)sx?$/i;
 
-export function analyzeDeadCode(assets: Asset[], routes: RouteAsset[]): DeadCodeReport {
+export function analyzeDeadCode(
+  assets: Asset[],
+  routes: RouteAsset[],
+  untrackedImportTargets: Set<string> = new Set(),
+): DeadCodeReport {
   const routeComponentNames = new Set(
     routes.map((r) => r.componentName).filter((n): n is string => Boolean(n)),
   );
@@ -48,6 +55,8 @@ export function analyzeDeadCode(assets: Asset[], routes: RouteAsset[]): DeadCode
   const orphanFiles: string[] = [];
   for (const [path, fileAssets] of byFile) {
     if (isEntryFile(path)) continue;
+    // Something imports a non-asset export (a constant, …) from this file.
+    if (untrackedImportTargets.has(path)) continue;
     const exported = fileAssets.filter((a) => a.exportType !== 'none' && a.type !== 'route');
     if (exported.length === 0) continue;
     if (exported.every((a) => a.usageCount === 0 && !routeComponentNames.has(a.name))) {

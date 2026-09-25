@@ -121,7 +121,7 @@ export class RouteExtractor implements Extractor<RouteAsset> {
         attrs.find((a) => a.getNameNode().getText() === 'Component');
       const componentName = elementAttr ? extractComponentName(elementAttr) : undefined;
       out.push(
-        this.make(file, relPath, `${routePath} → ${componentName ?? '?'}`, 'react-router', routePath, 'route', ctx, componentName),
+        this.make(file, relPath, `${routePath} → ${componentName ?? '?'}`, 'react-router', routePath, 'route', ctx, componentName, [], el),
       );
     }
 
@@ -136,11 +136,19 @@ export class RouteExtractor implements Extractor<RouteAsset> {
     const routeArrays = file
       .getDescendantsOfKind(SyntaxKind.ArrayLiteralExpression)
       .filter(looksLikeRouteArray)
-      .filter((arr) => !isNestedRouteArray(arr));
-    for (const arr of routeArrays) {
-      for (const r of collectRouteObjects(arr)) {
+      .filter((arr) => !isNestedRoute(arr));
+    // A single route object handed straight to a call — a project helper such
+    // as `defineSection({ path, screens: [...] })` — is a route root as well.
+    const routeObjects = file
+      .getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression)
+      .filter((obj) => isRouteHelperArg(obj) && looksLikeRouteObject(obj))
+      .filter((obj) => !isNestedRoute(obj));
+    const roots = [...routeArrays, ...routeObjects].sort((a, b) => a.getStart() - b.getStart());
+    for (const root of roots) {
+      const routes = Node.isArrayLiteralExpression(root) ? collectRouteObjects(root) : collectRouteObject(root);
+      for (const r of routes) {
         out.push(
-          this.make(file, relPath, `${r.path} → ${r.component ?? '?'}`, 'react-router', r.path, 'route', ctx, r.component, r.children),
+          this.make(file, relPath, `${r.path} → ${r.component ?? '?'}`, 'react-router', r.path, 'route', ctx, r.component, r.children, r.node),
         );
       }
     }
@@ -200,6 +208,7 @@ export class RouteExtractor implements Extractor<RouteAsset> {
     ctx: ExtractionContext,
     componentName?: string,
     childRoutes: string[] = [],
+    node: Node = file,
   ): RouteAsset {
     return {
       id: makeId(relPath, `route:${routePath}:${router}:${componentName ?? ''}#${this.seq++}`),
@@ -207,8 +216,8 @@ export class RouteExtractor implements Extractor<RouteAsset> {
       type: 'route',
       path: relPath,
       exportType: 'none',
-      location: location(file, relPath),
-      jsDoc: getLeadingJsDoc(file),
+      location: location(node, relPath),
+      jsDoc: getLeadingJsDoc(node),
       signature: `${router} ${routePath}`,
       router,
       routePath,
@@ -282,10 +291,22 @@ function extractComponentName(attr: JsxAttribute): string | undefined {
   return undefined;
 }
 
+/** TanStack's own route factories — handled by `tanstackRoutes`. */
+const TANSTACK_FACTORIES = new Set(['createRoute', 'createRootRoute', 'createRootRouteWithContext', 'createFileRoute', 'createLazyFileRoute']);
+
+/** An object literal passed to a (non-TanStack) call, e.g. `defineSection({ … })`. */
+function isRouteHelperArg(obj: Node): boolean {
+  const call = obj.getParent();
+  if (!call || !Node.isCallExpression(call)) return false;
+  const callee = call.getExpression().getText();
+  return !TANSTACK_FACTORIES.has(callee.split('.').pop() ?? callee);
+}
+
 interface ObjRoute {
   path: string;
   component?: string;
   children: string[];
+  node: Node;
 }
 
 // Keys that mark an object literal as a react-router route config (rather than,
@@ -309,69 +330,102 @@ function looksLikeRouteObject(obj: Node): boolean {
   const hasPathish = !!obj.getProperty('path') || !!obj.getProperty('index');
   const hasRouteKey = ROUTE_OBJECT_KEYS.some((k) => !!obj.getProperty(k));
   if (hasPathish && hasRouteKey) return true;
-  // Pathless layout route: no path, but a `children` array of route objects.
-  const childrenProp = obj.getProperty('children');
-  if (childrenProp && Node.isPropertyAssignment(childrenProp)) {
-    const v = childrenProp.getInitializer();
-    if (v && Node.isArrayLiteralExpression(v) && looksLikeRouteArray(v)) return true;
+  // Nested routes may live under `children` or a project-specific key such as
+  // `screens`; a child array of route objects marks this object as a route.
+  // Without a path it's a pathless layout route.
+  return childRouteArrays(obj).length > 0;
+}
+
+/** Array-valued properties of a route object that hold child route objects. */
+function childRouteArrays(obj: Node): Node[] {
+  if (!Node.isObjectLiteralExpression(obj)) return [];
+  const out: Node[] = [];
+  for (const p of obj.getProperties()) {
+    if (!Node.isPropertyAssignment(p)) continue;
+    const v = p.getInitializer();
+    if (v && Node.isArrayLiteralExpression(v) && looksLikeRouteArray(v)) out.push(v);
   }
-  return false;
+  return out;
+}
+
+/**
+ * The object literals an array contributes, flattening spreads of inline
+ * arrays — including feature-flagged ones like `...(flag ? [{…}] : [])`.
+ */
+function arrayObjects(arr: Node): Node[] {
+  const out: Node[] = [];
+  const visit = (n: Node | undefined): void => {
+    if (!n) return;
+    if (Node.isParenthesizedExpression(n)) return visit(n.getExpression());
+    if (Node.isConditionalExpression(n)) {
+      visit(n.getWhenTrue());
+      visit(n.getWhenFalse());
+      return;
+    }
+    if (Node.isArrayLiteralExpression(n)) {
+      for (const el of n.getElements()) {
+        if (Node.isObjectLiteralExpression(el)) out.push(el);
+        else if (Node.isSpreadElement(el)) visit(el.getExpression());
+      }
+    }
+  };
+  visit(arr);
+  return out;
 }
 
 /** True if the array literal contains at least one react-router route object. */
 function looksLikeRouteArray(arr: Node): boolean {
-  return arr.getChildrenOfKind(SyntaxKind.ObjectLiteralExpression).some(looksLikeRouteObject);
+  return arrayObjects(arr).some(looksLikeRouteObject);
 }
 
-/** True if this route array is nested inside another route array (a `children:`
- *  array), so it is already handled by the parent's recursive collection. */
-function isNestedRouteArray(arr: Node): boolean {
-  let p = arr.getParent();
+/** True if this node sits inside another route array or route object, so it is
+ *  already handled by that root's recursive collection. */
+function isNestedRoute(node: Node): boolean {
+  let p = node.getParent();
   while (p) {
     if (Node.isArrayLiteralExpression(p) && looksLikeRouteArray(p)) return true;
+    if (Node.isObjectLiteralExpression(p) && looksLikeRouteObject(p)) return true;
     p = p.getParent();
   }
   return false;
 }
 
 function collectRouteObjects(arr: Node): ObjRoute[] {
+  return arrayObjects(arr).flatMap(collectRouteObject);
+}
+
+function collectRouteObject(el: Node): ObjRoute[] {
   const out: ObjRoute[] = [];
-  for (const el of arr.getChildrenOfKind(SyntaxKind.ObjectLiteralExpression)) {
-    const pathProp = el.getProperty('path');
-    const indexProp = el.getProperty('index');
-    let path: string | undefined;
-    if (pathProp && Node.isPropertyAssignment(pathProp)) {
-      const v = pathProp.getInitializer();
-      if (v && Node.isStringLiteral(v)) path = v.getLiteralValue();
-    }
-    // `{ index: true }` (with or without an empty `path: ''`) is an index route.
-    if ((path === undefined || path === '') && indexProp) path = '(index)';
-
-    const component = componentNameFromObject(el);
-
-    // nested children: emit each child as its own route, and record their paths
-    // on the parent so the route tree is reconstructable.
-    const nested: ObjRoute[] = [];
-    const childrenProp = el.getProperty('children');
-    if (childrenProp && Node.isPropertyAssignment(childrenProp)) {
-      const v = childrenProp.getInitializer();
-      if (v && Node.isArrayLiteralExpression(v)) nested.push(...collectRouteObjects(v));
-    }
-
-    if (path === undefined) {
-      // Pathless layout route (e.g. an auth/error layout wrapper). Surface it
-      // only when it actually wraps something, and keep its children so the
-      // nested paths are not lost.
-      if (component || nested.length) {
-        out.push({ path: '(layout)', component, children: nested.map((c) => c.path) });
-        out.push(...nested);
-      }
-      continue;
-    }
-
-    out.push({ path, component, children: nested.map((c) => c.path) });
-    out.push(...nested);
+  if (!Node.isObjectLiteralExpression(el)) return out;
+  const pathProp = el.getProperty('path');
+  const indexProp = el.getProperty('index');
+  let path: string | undefined;
+  if (pathProp && Node.isPropertyAssignment(pathProp)) {
+    const v = pathProp.getInitializer();
+    if (v && Node.isStringLiteral(v)) path = v.getLiteralValue();
   }
+  // `{ index: true }` (with or without an empty `path: ''`) is an index route.
+  if ((path === undefined || path === '') && indexProp) path = '(index)';
+
+  const component = componentNameFromObject(el);
+
+  // nested children: emit each child as its own route, and record their paths
+  // on the parent so the route tree is reconstructable.
+  const nested = childRouteArrays(el).flatMap(collectRouteObjects);
+
+  if (path === undefined) {
+    // Pathless layout route (e.g. an auth/error layout wrapper). Surface it
+    // only when it actually wraps something, and keep its children so the
+    // nested paths are not lost.
+    if (component || nested.length) {
+      out.push({ path: '(layout)', component, children: nested.map((c) => c.path), node: el });
+      out.push(...nested);
+    }
+    return out;
+  }
+
+  out.push({ path, component, children: nested.map((c) => c.path), node: el });
+  out.push(...nested);
   return out;
 }
 
@@ -388,8 +442,12 @@ function jsxComponentName(node: Node): string | undefined {
   const tags: string[] = [];
   if (Node.isJsxSelfClosingElement(n)) tags.push(n.getTagNameNode().getText());
   else if (Node.isJsxElement(n)) tags.push(n.getOpeningElement().getTagNameNode().getText());
+  const root = n;
+  // JSX passed as a prop (`icon={<HomeOutlined/>}`) is decoration, not the page.
+  const inProp = (d: Node): boolean =>
+    d.getAncestors().some((a) => Node.isJsxAttribute(a) && a.getStart() >= root.getStart() && a.getEnd() <= root.getEnd());
   for (const d of n.getDescendants()) {
-    if (Node.isJsxOpeningElement(d) || Node.isJsxSelfClosingElement(d)) {
+    if ((Node.isJsxOpeningElement(d) || Node.isJsxSelfClosingElement(d)) && !inProp(d)) {
       tags.push(d.getTagNameNode().getText());
     }
   }
