@@ -89,14 +89,3 @@ export interface AnalysisResult {
   stats: Stats;
 }
 
-export const TYPE_COLORS: Record<string, string> = {
-  component: '#2e9bff',
-  hook: '#a78bfa',
-  utility: '#3ddc84',
-  context: '#f59e0b',
-  store: '#fb7185',
-  provider: '#ff8ec7',
-  route: '#c084fc',
-  file: '#6b6963',
-  external: '#403e3a',
-};

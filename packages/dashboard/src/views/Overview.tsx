@@ -1,156 +1,100 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiArrowUpRight, FiCheck } from 'react-icons/fi';
+import { motion } from 'motion/react';
+import { ArrowRight, CheckCircle, Warning } from '@phosphor-icons/react';
 import { useData } from '../data';
-import CompositionChart from '../components/CompositionChart';
-import { SearchField, TypeBadge, EditorLink, useSearch } from '../ui';
-import type { Asset, SearchRecord } from '../types';
+import type { Asset } from '../types';
+import { EditorLink, PAGE_FOR, TypeBadge, compact, folderName, timeAgo, formatTime } from '../ui';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/stat-card';
+import { InfoTip } from '@/components/ui/info-tip';
+import { PageHeader } from '@/components/ui/page-header';
+import { SegmentMeter, type Segment } from '@/components/ui/segment-meter';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { EmptyState } from '@/components/ui/empty-state';
+import UsageCurve from '@/components/charts/UsageCurve';
+import ReuseByType, { REUSE_SERIES } from '@/components/charts/ReuseByType';
+import { formatBytes } from '../lib/assetFile';
+import { cn } from '@/lib/utils';
 
-type CardKey = 'components' | 'hooks' | 'utils' | 'contexts' | 'routes';
+type Collection = 'components' | 'hooks' | 'utils' | 'contexts' | 'routes';
 
-const CARDS: Array<{ label: string; key: CardKey; href: string; hue: string }> = [
-  { label: 'Components', key: 'components', href: '/components', hue: 'var(--color-t-component)' },
-  { label: 'Hooks', key: 'hooks', href: '/hooks', hue: 'var(--color-t-hook)' },
-  { label: 'Utils', key: 'utils', href: '/utils', hue: 'var(--color-t-utility)' },
-  { label: 'Contexts', key: 'contexts', href: '/contexts', hue: 'var(--color-t-context)' },
-  { label: 'Routes', key: 'routes', href: '/routes', hue: 'var(--color-t-route)' },
+const COLLECTIONS: Array<{ key: Collection; label: string }> = [
+  { key: 'components', label: 'Components' },
+  { key: 'hooks', label: 'Hooks' },
+  { key: 'utils', label: 'Utils' },
+  { key: 'contexts', label: 'Contexts' },
 ];
 
-/** Per-type hue for the leaderboard bars (mirrors the legend palette). */
-const TYPE_HUE: Record<string, string> = {
-  component: 'var(--color-t-component)',
-  hook: 'var(--color-t-hook)',
-  utility: 'var(--color-t-utility)',
-  context: 'var(--color-t-context)',
-  store: 'var(--color-t-store)',
-  provider: 'var(--color-t-provider)',
-  route: 'var(--color-t-route)',
-};
-
-/** Dependency-kind hue for the "Most imported" leaderboard dots. */
-const DEP_KIND_HUE: Record<string, string> = {
-  prod: 'var(--color-success)',
-  dev: 'var(--color-t-component)',
-  peer: 'var(--color-t-hook)',
-  optional: 'var(--color-t-hook)',
-};
-
-const PAGE_FOR: Record<string, string> = {
-  component: '/components',
-  hook: '/hooks',
-  utility: '/utils',
-  context: '/contexts',
-  store: '/contexts',
-  provider: '/contexts',
-  route: '/routes',
-};
-
-function folderName(p: string): string {
-  if (!p) return p;
-  const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/);
-  return parts[parts.length - 1] || p;
-}
-
-/** ISO timestamp → readable local time, e.g. "Jun 15, 2026, 2:41 PM". */
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
+type CurveFilter = 'all' | Collection;
 
 export default function Overview() {
   const data = useData();
   const s = data.stats;
 
-  const [query, setQuery] = useState('');
-  const search = useSearch(data.search || [], ['name']);
-  const hits = useMemo(
-    () => (query.trim() ? search(query).slice(0, 8) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [query, data.search],
-  );
-
-  const counts = CARDS.map((c) => (s as unknown as Record<string, number>)[c.key] || 0);
-  const totalAssets = counts.reduce((a, b) => a + b, 0);
-
-  // Every reusable asset flattened once — drives reusability + the leaderboard.
-  const allAssets = useMemo<Asset[]>(
-    () => [
-      ...(data.components || []),
-      ...(data.hooks || []),
-      ...(data.utils || []),
-      ...(data.contexts || []),
-      ...(data.routes || []),
-    ],
+  // Every reusable asset (routes are entry points, not reused code).
+  const reusable = useMemo<Asset[]>(
+    () => COLLECTIONS.flatMap((c) => (data[c.key] as Asset[]) || []),
     [data],
   );
 
-  // How reusable is the codebase? Split assets by how many places reference them.
   const reuse = useMemo(() => {
-    const total = allAssets.length;
-    const reused = allAssets.filter((a) => (a.usageCount || 0) >= 2).length;
-    const once = allAssets.filter((a) => (a.usageCount || 0) === 1).length;
-    const unused = total - reused - once;
-    const pct = total ? Math.round((reused / total) * 100) : 0;
-    return [
-      { label: 'Reused (2+ places)', n: reused, hue: 'var(--color-success)', total, pct },
-      { label: 'Used once', n: once, hue: 'var(--color-t-component)', total, pct },
-      { label: 'Never referenced', n: unused, hue: 'var(--color-warn)', total, pct },
-    ];
-  }, [allAssets]);
-  const reusedPct = reuse[0].pct;
+    const reused = reusable.filter((a) => (a.usageCount || 0) >= 2).length;
+    const once = reusable.filter((a) => (a.usageCount || 0) === 1).length;
+    const total = reusable.length;
+    return { reused, once, unused: total - reused - once, total, pct: total ? Math.round((reused / total) * 100) : 0 };
+  }, [reusable]);
 
-  // Most referenced assets — a leaderboard of the load-bearing code.
-  const topUsed = useMemo(
+  // ── Reference curve ──
+  const [curve, setCurve] = useState<CurveFilter>('all');
+  const curveData = useMemo(() => {
+    const pool = curve === 'all' ? reusable : ((data[curve] as Asset[]) || []);
+    return pool
+      .filter((a) => (a.usageCount || 0) > 0)
+      .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+      .map((a) => ({ name: a.name, refs: a.usageCount || 0 }));
+  }, [curve, reusable, data]);
+  const totalRefs = curveData.reduce((a, d) => a + d.refs, 0);
+  // Concentration: share of references held by the top 10% of assets.
+  const topTenth = Math.max(1, Math.ceil(curveData.length * 0.1));
+  const topShare = totalRefs
+    ? Math.round((curveData.slice(0, topTenth).reduce((a, d) => a + d.refs, 0) / totalRefs) * 100)
+    : 0;
+
+  // ── Reuse by type ──
+  const reuseRows = useMemo(
     () =>
-      allAssets
-        .filter((a) => (a.usageCount || 0) > 0)
-        .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
-        .slice(0, 6),
-    [allAssets],
+      COLLECTIONS.map((c) => {
+        const items = (data[c.key] as Asset[]) || [];
+        const reused = items.filter((a) => (a.usageCount || 0) >= 2).length;
+        const once = items.filter((a) => (a.usageCount || 0) === 1).length;
+        return { type: c.label, reused, once, unused: items.length - reused - once };
+      }).filter((r) => r.reused + r.once + r.unused > 0),
+    [data],
   );
-  const maxUse = topUsed[0]?.usageCount || 1;
 
-  const links = data.graph?.edges?.length || 0;
+  // ── Health ──
+  const dc = data.deadCode || {};
+  const deadExports = dc.deadExports?.length || 0;
+  const orphans = dc.orphanFiles?.length || 0;
+  const dupes = dc.duplicateCandidates?.length || 0;
+  const deadTotal = deadExports + orphans + dupes;
 
-  const warnings = useMemo(() => {
-    const dc = data.deadCode || {};
-    const groups: Array<[string, unknown]> = [
-      ['Unused components', dc.unusedComponents],
-      ['Unused hooks', dc.unusedHooks],
-      ['Unused utils', dc.unusedUtils],
-      ['Unused contexts', dc.unusedContexts],
-      ['Dead exports', dc.deadExports],
-      ['Orphan files', dc.orphanFiles],
-      ['Duplicate candidates', dc.duplicateCandidates],
-    ];
-    return groups.map(([label, arr]) => ({ label, n: Array.isArray(arr) ? arr.length : 0 }));
-  }, [data.deadCode]);
-
-  const issueTotal = warnings.reduce((a, w) => a + w.n, 0);
-
-  // Declared third-party packages (offline-derivable; the full view enriches
-  // each one live from the npm registry).
   const deps = data.dependencies?.dependencies || [];
   const depCounts = data.dependencies?.counts;
   const depUnused = deps.filter((d) => (d.usedInCount || 0) === 0).length;
-  const depBreakdown = depCounts
-    ? [
-        { label: 'Production', n: depCounts.prod, hue: 'var(--color-success)' },
-        { label: 'Development', n: depCounts.dev, hue: 'var(--color-t-component)' },
-        {
-          label: 'Peer / optional',
-          n: depCounts.peer + depCounts.optional,
-          hue: 'var(--color-t-hook)',
-        },
-      ].filter((r) => r.n > 0)
-    : [];
+
+  const sa = data.staticAssets?.counts;
+
+  // ── Leaderboards ──
+  const topUsed = useMemo(
+    () =>
+      reusable
+        .filter((a) => (a.usageCount || 0) > 0)
+        .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+        .slice(0, 6),
+    [reusable],
+  );
   const topDeps = useMemo(
     () =>
       [...deps]
@@ -159,357 +103,394 @@ export default function Overview() {
         .slice(0, 6),
     [deps],
   );
-  const maxDepUse = topDeps[0]?.usedInCount || 1;
 
   return (
     <>
-      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
-        <div className="min-w-0">
-          <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
-            Overview
-          </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-            <span className="font-mono tracking-normal text-ink-muted" title={data.meta.root}>
+      <PageHeader
+        title="Overview"
+        description={
+          <>
+            <span className="font-mono text-ink" title={data.meta.root}>
               {folderName(data.meta.root)}
             </span>
-            <span className="text-ink-faint">·</span>
-            <span>
-              {totalAssets} assets across {s.fileCount} files
-            </span>
-            <span className="text-ink-faint">·</span>
-            <span className="text-ink-faint">analyzed {formatTime(data.meta.generatedAt)}</span>
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2.5">
-          <div className="relative w-[min(340px,60vw)]">
-            <SearchField value={query} onChange={setQuery} placeholder="Search everything…" />
-            {hits.length > 0 && (
-              <div className="absolute top-[calc(100%+8px)] right-0 left-0 z-30 overflow-hidden rounded-lg bg-surface-1 shadow-[0_24px_56px_-20px_rgba(0,0,0,0.7)]">
-                {hits.map((r: SearchRecord) => (
-                  <Link
-                    key={r.id}
-                    to={PAGE_FOR[r.type] || '/'}
-                    onClick={() => setQuery('')}
-                    className="flex items-center gap-3 border-b border-hairline-soft px-3.5 py-2.5 no-underline"
-                  >
-                    <TypeBadge type={r.type} />
-                    <span className="min-w-0 flex-1">
-                      <span className="font-mono text-[13px] tracking-normal text-ink">
-                        {r.name}
-                      </span>
-                      <span className="block truncate font-mono text-[11px] tracking-normal text-ink-faint">
-                        {r.path}
-                      </span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            {' · '}
+            {reusable.length} reusable assets across {s.fileCount} files{' · '}
+            <span title={formatTime(data.meta.generatedAt)}>analyzed {timeAgo(data.meta.generatedAt)}</span>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-4">
-        {/* KPI tiles */}
-        <div className="grid grid-cols-5 gap-4 max-[1180px]:grid-cols-3 max-[620px]:grid-cols-2">
-          {CARDS.map((c, i) => {
-            const n = counts[i];
-            const share = totalAssets ? Math.max(6, (n / totalAssets) * 100) : 0;
-            return (
-              <Link
-                key={c.href}
-                to={c.href}
-                className="group relative flex flex-col gap-3 rounded-2xl bg-surface-1 px-4.5 pt-4.5 pb-4.25 shadow-card transition-[background-color,transform] duration-140 hover:-translate-y-0.5 hover:bg-surface-2"
-              >
-                <span className="absolute top-3.5 right-3.5 translate-x-[-2px] translate-y-[2px] text-ink-faint transition-[opacity,transform,color] duration-140 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:text-ink">
-                  <FiArrowUpRight size={15} />
-                </span>
-                <div className="flex items-center gap-1.75">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: c.hue }} />
-                  <span className="text-[12.5px] tracking-[-0.01em] text-ink-muted">{c.label}</span>
-                </div>
-                <div className="font-display text-[34px] leading-[0.9] font-semibold tracking-[-0.04em] tabular-nums text-ink">
-                  {n}
-                </div>
-                <div className="h-0.75 overflow-hidden rounded-[3px] bg-surface-3">
-                  <span
-                    className="block h-full rounded-[3px]"
-                    style={{ width: `${share}%`, background: c.hue }}
-                  />
-                </div>
-              </Link>
-            );
-          })}
+        {/* ── KPI row ── */}
+        <div className="grid grid-cols-4 gap-3 sm:gap-4 max-[1180px]:grid-cols-2">
+          <StatCard
+            label="Reusable assets"
+            value={compact(reusable.length)}
+            hint={`${s.components} components · ${s.hooks} hooks`}
+            to="/components"
+          />
+          <StatCard
+            label="Reuse rate"
+            info="Share of components, hooks, utils and contexts referenced from two or more places."
+            value={`${reuse.pct}%`}
+            hint={`${reuse.reused} reused 2+ times`}
+          />
+          <StatCard
+            label="Dead code"
+            value={deadTotal}
+            hint="findings to review"
+            to="/dead-code"
+            badge={
+              deadTotal
+                ? { text: 'Review', tone: 'warn', icon: <Warning size={11} weight="fill" /> }
+                : { text: 'Clear', tone: 'success', icon: <CheckCircle size={11} weight="fill" /> }
+            }
+          />
+          <StatCard
+            label="Dependencies"
+            value={depCounts?.total ?? deps.length}
+            hint={depCounts ? `${depCounts.prod} prod · ${depCounts.dev} dev` : undefined}
+            to="/dependencies"
+            badge={
+              depUnused
+                ? { text: `${depUnused} unused`, tone: 'warn' }
+                : deps.length
+                  ? { text: 'All used', tone: 'success' }
+                  : undefined
+            }
+          />
         </div>
 
-        {/* Composition + Reusability */}
-        {totalAssets > 0 && (
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.6fr_1fr]">
-            <div className="flex flex-col rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-              <div className="mb-4.5 flex items-center justify-between gap-3">
-                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                  Composition
-                </h2>
-                <span className="text-xs text-ink-faint">{totalAssets} reusable assets</span>
-              </div>
-              <CompositionChart
-                data={CARDS.map((c, i) => ({
-                  key: c.key,
-                  label: c.label,
-                  value: counts[i],
-                  hue: c.hue,
-                }))}
-              />
-            </div>
-
-            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-              <div className="mb-4.5 flex items-center justify-between gap-3">
-                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                  Reusability
-                </h2>
-                <span className="text-xs text-ink-faint">across {allAssets.length} assets</span>
-              </div>
-              <div className="mb-5 flex items-baseline gap-1.5">
-                <span className="font-display text-[40px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums text-ink">
-                  {reusedPct}%
+        {/* ── Reference curve (hero) ── */}
+        <Card>
+          <CardHeader className="flex-wrap items-start">
+            <div className="min-w-0">
+              <CardTitle
+                info={
+                  <InfoTip>
+                    Every referenced asset, ranked from most to least used. A steep head means a few
+                    assets carry the codebase; a long flat tail means wide, shallow reuse.
+                  </InfoTip>
+                }
+              >
+                References by asset
+              </CardTitle>
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-[30px] leading-none font-semibold tracking-[-0.03em] tabular-nums">
+                  {totalRefs.toLocaleString()}
                 </span>
-                <span className="text-[13.5px] text-ink-muted">reused in 2+ places</span>
-              </div>
-              <div className="flex flex-col gap-3.5">
-                {reuse.map((r) => {
-                  const w = r.total ? Math.max(r.n ? 4 : 0, (r.n / r.total) * 100) : 0;
-                  return (
-                    <div key={r.label} className="flex flex-col gap-1.75">
-                      <div className="flex items-center gap-2 text-[13px] text-ink-muted">
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ background: r.hue }}
-                        />
-                        {r.label}
-                        <b className="ml-auto font-semibold tabular-nums text-ink">{r.n}</b>
-                      </div>
-                      <div className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
-                        <span
-                          className="block h-full rounded-[5px]"
-                          style={{ width: `${w}%`, background: r.hue }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                <span className="text-[12.5px] text-ink-faint">
+                  references across {curveData.length} assets
+                </span>
               </div>
             </div>
-          </div>
-        )}
+            <CardAction className="max-w-full overflow-x-auto">
+              <Tabs value={curve} onValueChange={(v) => setCurve(v as CurveFilter)}>
+                <TabsList aria-label="Filter by asset type">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  {COLLECTIONS.map((c) => (
+                    <TabsTrigger key={c.key} value={c.key}>
+                      {c.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {curveData.length > 1 ? (
+              <>
+                <UsageCurve key={curve} data={curveData} />
+                <div className="mt-2 flex items-center justify-between text-[11.5px] text-ink-faint">
+                  <span>Most referenced</span>
+                  <span className="hidden sm:inline">
+                    Top 10% of assets hold{' '}
+                    <b className="font-medium text-ink-muted">{topShare}%</b> of references
+                  </span>
+                  <span>Least referenced</span>
+                </div>
+              </>
+            ) : (
+              <EmptyState title="Not enough references to plot">
+                Fewer than two assets of this type are referenced anywhere.
+              </EmptyState>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Most referenced + Health */}
-        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1.3fr_1fr]">
-          <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-            <div className="mb-4.5 flex items-center justify-between gap-3">
-              <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                Most referenced
-              </h2>
-              <span className="text-xs text-ink-faint">{links} dependency links</span>
-            </div>
-            {topUsed.length > 0 ? (
-              <div className="flex flex-col">
-                {topUsed.map((a, i) => (
-                  <div
-                    key={a.id}
-                    className="grid grid-cols-[16px_auto_minmax(0,1fr)_88px_30px] items-center gap-2.75 border-t border-hairline-soft py-2.25 first:border-t-0"
-                  >
-                    <span className="text-right text-xs tabular-nums text-ink-faint">{i + 1}</span>
-                    <TypeBadge type={a.type} />
-                    <span className="min-w-0">
+        {/* ── Health + Reuse by type ── */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Codebase health</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <Tabs defaultValue="dead">
+                <TabsList variant="underline">
+                  <TabsTrigger value="dead">Dead code</TabsTrigger>
+                  <TabsTrigger value="deps">Dependencies</TabsTrigger>
+                  <TabsTrigger value="assets">Static assets</TabsTrigger>
+                </TabsList>
+                <TabsContent value="dead" className="outline-none">
+                  <HealthPanel
+                    to="/dead-code"
+                    segments={[
+                      { key: 'exports', label: 'Unused exports', value: deadExports, color: 'var(--color-chart-1)' },
+                      { key: 'orphans', label: 'Orphan files', value: orphans, color: 'var(--color-chart-2)' },
+                      { key: 'dupes', label: 'Duplicates', value: dupes, color: 'var(--color-chart-3)' },
+                    ]}
+                    unit="found"
+                  />
+                </TabsContent>
+                <TabsContent value="deps" className="outline-none">
+                  <HealthPanel
+                    to="/dependencies"
+                    segments={[
+                      { key: 'prod', label: 'Production', value: depCounts?.prod || 0, color: 'var(--color-chart-1)' },
+                      { key: 'dev', label: 'Development', value: depCounts?.dev || 0, color: 'var(--color-chart-2)' },
+                      {
+                        key: 'peer',
+                        label: 'Peer & optional',
+                        value: (depCounts?.peer || 0) + (depCounts?.optional || 0),
+                        color: 'var(--color-chart-3)',
+                      },
+                      { key: 'unused', label: 'Never imported', value: depUnused, color: 'var(--color-surface-3)', excluded: true },
+                    ]}
+                    unit="packages"
+                  />
+                </TabsContent>
+                <TabsContent value="assets" className="outline-none">
+                  <HealthPanel
+                    to="/assets"
+                    segments={[
+                      {
+                        key: 'images',
+                        label: 'Images & vectors',
+                        value: (sa?.byKind.image || 0) + (sa?.byKind.vector || 0),
+                        color: 'var(--color-chart-1)',
+                      },
+                      { key: 'fonts', label: 'Fonts', value: sa?.byKind.font || 0, color: 'var(--color-chart-2)' },
+                      {
+                        key: 'media',
+                        label: 'Media & docs',
+                        value: (sa?.byKind.video || 0) + (sa?.byKind.audio || 0) + (sa?.byKind.document || 0),
+                        color: 'var(--color-chart-3)',
+                      },
+                      { key: 'unused', label: 'Unreferenced', value: sa?.unused || 0, color: 'var(--color-surface-3)', excluded: true },
+                    ]}
+                    unit={sa ? `files · ${formatBytes(sa.totalBytes)}` : 'files'}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="items-start">
+              <div>
+                <CardTitle>Reuse by type</CardTitle>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-[30px] leading-none font-semibold tracking-[-0.03em] tabular-nums">
+                    {reuse.pct}%
+                  </span>
+                  <span className="text-[12.5px] text-ink-faint">reused in 2+ places</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <ul className="m-0 mb-3 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px] text-ink-muted">
+                {REUSE_SERIES.map((r) => (
+                  <li key={r.key} className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-xs" style={{ background: r.color }} />
+                    {r.label}
+                    <span className="text-ink-faint tabular-nums">{reuse[r.key]}</span>
+                  </li>
+                ))}
+              </ul>
+              {reuseRows.length ? (
+                <ReuseByType data={reuseRows} />
+              ) : (
+                <EmptyState title="No reusable assets found" />
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Leaderboards ── */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Most referenced</CardTitle>
+              <CardAction>
+                <span className="text-[12px] text-ink-faint">{data.graph?.edges?.length || 0} links</span>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="pt-2">
+              {topUsed.length ? (
+                <Leaderboard
+                  rows={topUsed.map((a) => ({
+                    key: a.id,
+                    value: a.usageCount || 0,
+                    lead: <TypeBadge type={a.type} />,
+                    name: (
+                      <Link
+                        to={`${PAGE_FOR[a.type] || '/'}?focus=${encodeURIComponent(a.id)}`}
+                        className="truncate font-mono text-[12.5px] text-ink no-underline hover:underline"
+                        title={a.path}
+                      >
+                        {a.name}
+                      </Link>
+                    ),
+                    trail: (
                       <EditorLink
                         root={data.meta.root}
                         path={a.location?.filePath || a.path}
                         line={a.location?.line}
                         column={a.location?.column}
-                      >
-                        <span
-                          className="min-w-0 truncate font-mono text-[13px] tracking-normal text-ink"
-                          title={a.name}
-                        >
-                          {a.name}
-                        </span>
-                      </EditorLink>
-                    </span>
-                    <span className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
-                      <span
-                        className="block h-full rounded-[5px]"
-                        style={{
-                          width: `${Math.max(6, ((a.usageCount || 0) / maxUse) * 100)}%`,
-                          background: TYPE_HUE[a.type] || 'var(--color-ink-faint)',
-                        }}
+                        iconOnly
                       />
-                    </span>
-                    <span className="text-right text-[13px] font-semibold tabular-nums text-ink">
-                      {a.usageCount || 0}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[13.5px] text-ink-faint">No references detected yet.</p>
-            )}
-          </div>
+                    ),
+                  }))}
+                />
+              ) : (
+                <EmptyState title="No references detected yet" />
+              )}
+            </CardContent>
+          </Card>
 
-          <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-            <div className="mb-4.5 flex items-center justify-between gap-3">
-              <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                Health
-              </h2>
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium ${
-                  issueTotal ? 'text-warn' : 'text-success'
-                }`}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {issueTotal ? `${issueTotal} to review` : 'All clear'}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              {warnings.map((w) => (
-                <div
-                  key={w.label}
-                  className="flex items-center gap-2.75 border-t border-hairline-soft py-2.5 first:border-t-0"
-                >
-                  <span
-                    className={`h-1.75 w-1.75 shrink-0 rounded-full ${
-                      w.n ? 'bg-warn' : 'bg-success'
-                    }`}
-                  />
-                  <span className="min-w-0 text-[13.5px] text-ink">{w.label}</span>
-                  {w.n ? (
-                    <span className="ml-auto text-[13.5px] font-semibold tabular-nums text-warn">
-                      {w.n}
-                    </span>
-                  ) : (
-                    <span className="ml-auto inline-flex items-center gap-1 text-[13.5px] font-semibold tabular-nums text-ink-faint">
-                      <FiCheck size={13} /> 0
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Dependencies */}
-        {deps.length > 0 && (
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[1fr_1.3fr]">
-            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-              <div className="mb-4.5 flex items-center justify-between gap-3">
-                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                  Dependencies
-                </h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Most imported packages</CardTitle>
+              <CardAction>
                 <Link
                   to="/dependencies"
-                  className="inline-flex items-center gap-0.75 text-xs text-ink-faint no-underline transition-colors duration-120 hover:text-accent"
+                  className="inline-flex items-center gap-1 text-[12px] text-ink-faint no-underline transition-colors hover:text-ink"
                 >
-                  View all <FiArrowUpRight size={13} />
+                  View all <ArrowRight size={12} />
                 </Link>
-              </div>
-              <div className="mb-5 flex items-baseline gap-1.5">
-                <span className="font-display text-[40px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums text-ink">
-                  {depCounts?.total ?? deps.length}
-                </span>
-                <span className="text-[13.5px] text-ink-muted">
-                  packages declared{depUnused ? ` · ${depUnused} unused` : ''}
-                </span>
-              </div>
-              <div className="flex flex-col gap-3.5">
-                {depBreakdown.map((r) => {
-                  const total = depCounts?.total || 1;
-                  const w = Math.max(r.n ? 4 : 0, (r.n / total) * 100);
-                  return (
-                    <div key={r.label} className="flex flex-col gap-1.75">
-                      <div className="flex items-center gap-2 text-[13px] text-ink-muted">
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ background: r.hue }}
-                        />
-                        {r.label}
-                        <b className="ml-auto font-semibold tabular-nums text-ink">{r.n}</b>
-                      </div>
-                      <div className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
-                        <span
-                          className="block h-full rounded-[5px]"
-                          style={{ width: `${w}%`, background: r.hue }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-              <div className="mb-4.5 flex items-center justify-between gap-3">
-                <h2 className="m-0 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-                  Most imported
-                </h2>
-                <span className="text-xs text-ink-faint">packages by files importing them</span>
-              </div>
-              {topDeps.length > 0 ? (
-                <div className="flex flex-col">
-                  {topDeps.map((d, i) => (
-                    <div
-                      key={d.name}
-                      className="grid grid-cols-[16px_auto_minmax(0,1fr)_88px_30px] items-center gap-2.75 border-t border-hairline-soft py-2.25 first:border-t-0"
-                    >
-                      <span className="text-right text-xs tabular-nums text-ink-faint">
-                        {i + 1}
-                      </span>
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: DEP_KIND_HUE[d.kind] }}
-                      />
-                      <span className="min-w-0">
-                        {d.npmUrl ? (
-                          <a
-                            href={d.npmUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block truncate font-mono tracking-normal no-underline"
-                            title={`${d.name} on npm`}
-                          >
-                            {d.name}
-                          </a>
-                        ) : (
-                          <span
-                            className="block truncate font-mono tracking-normal"
-                            title={d.name}
-                          >
-                            {d.name}
-                          </span>
-                        )}
-                      </span>
-                      <span className="h-1.25 overflow-hidden rounded-[5px] bg-surface-2">
-                        <span
-                          className="block h-full rounded-[5px]"
-                          style={{
-                            width: `${Math.max(6, ((d.usedInCount || 0) / maxDepUse) * 100)}%`,
-                            background: DEP_KIND_HUE[d.kind] || 'var(--color-ink-faint)',
-                          }}
-                        />
-                      </span>
-                      <span className="text-right text-[13px] font-semibold tabular-nums text-ink">
-                        {d.usedInCount || 0}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="pt-2">
+              {topDeps.length ? (
+                <Leaderboard
+                  rows={topDeps.map((d) => ({
+                    key: d.name,
+                    value: d.usedInCount || 0,
+                    lead: <span className="w-9 text-[11px] text-ink-faint">{d.kind}</span>,
+                    name: d.npmUrl ? (
+                      <a
+                        href={d.npmUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate font-mono text-[12.5px] text-ink no-underline hover:underline"
+                        title={`${d.name} on npm`}
+                      >
+                        {d.name}
+                      </a>
+                    ) : (
+                      <span className="truncate font-mono text-[12.5px] text-ink">{d.name}</span>
+                    ),
+                  }))}
+                />
               ) : (
-                <p className="text-[13.5px] text-ink-faint">
-                  No declared packages are imported in the scanned source.
-                </p>
+                <EmptyState title="No declared packages are imported" />
               )}
-            </div>
-          </div>
-        )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
+  );
+}
+
+/* ─────────────────────────────── Pieces ─────────────────────────────── */
+
+/**
+ * One health tab: a proportional meter over its segments, then a labelled tile
+ * per segment (label, dot and count — identity never rests on the meter's
+ * color). `excluded` segments are callouts shown as tiles but kept out of the
+ * meter, since they overlap the others.
+ */
+function HealthPanel({
+  segments,
+  unit,
+  to,
+}: {
+  segments: Array<Segment & { excluded?: boolean }>;
+  unit: string;
+  to: string;
+}) {
+  const inMeter = segments.filter((x) => !x.excluded);
+  const total = inMeter.reduce((a, x) => a + x.value, 0);
+  return (
+    <div className="pt-4">
+      <div className="mb-3 flex items-baseline gap-2">
+        <span className="text-[22px] leading-none font-semibold tabular-nums">{total}</span>
+        <span className="text-[12.5px] text-ink-faint">{unit}</span>
+      </div>
+      <SegmentMeter segments={inMeter} />
+      <div className={cn('mt-4 grid gap-2.5', segments.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+        {segments.map((x, i) => (
+          <motion.div
+            key={x.key}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.04, duration: 0.3 }}
+          >
+            <Link
+              to={to}
+              className="block rounded-lg px-3.5 py-3 no-underline shadow-[inset_0_0_0_1px_var(--color-hairline-soft)] transition-colors hover:bg-surface-2/60 focus-visible:ring-[3px] focus-visible:ring-accent-ring focus-visible:outline-none"
+            >
+              <span
+                className="mb-2.5 block h-1 w-6 rounded-full"
+                style={{ background: x.excluded ? 'var(--color-warn)' : x.color }}
+                aria-hidden="true"
+              />
+              <span className="block text-[12px] text-ink-muted">{x.label}</span>
+              <span className="mt-1 block text-[20px] leading-none font-semibold text-ink tabular-nums">
+                {x.value}
+              </span>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface LeaderRow {
+  key: string;
+  value: number;
+  lead: React.ReactNode;
+  name: React.ReactNode;
+  trail?: React.ReactNode;
+}
+
+/** Ranked rows with an inline magnitude bar scaled to the leader. */
+function Leaderboard({ rows }: { rows: LeaderRow[] }) {
+  const max = rows[0]?.value || 1;
+  return (
+    <ol className="m-0 flex list-none flex-col p-0">
+      {rows.map((r, i) => (
+        <li
+          key={r.key}
+          className="grid grid-cols-[14px_auto_minmax(0,1fr)_minmax(48px,96px)_28px_16px] items-center gap-3 border-t border-hairline-soft py-2.5 first:border-t-0"
+        >
+          <span className="text-right text-[11.5px] text-ink-faint tabular-nums">{i + 1}</span>
+          {r.lead}
+          <span className="flex min-w-0">{r.name}</span>
+          <span className="h-1 overflow-hidden rounded-full bg-surface-2">
+            <motion.span
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(6, (r.value / max) * 100)}%` }}
+              transition={{ duration: 0.7, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+              className="block h-full rounded-full bg-chart-2"
+            />
+          </span>
+          <span className="text-right text-[12.5px] font-medium text-ink tabular-nums">{r.value}</span>
+          <span className="flex justify-end">{r.trail}</span>
+        </li>
+      ))}
+    </ol>
   );
 }

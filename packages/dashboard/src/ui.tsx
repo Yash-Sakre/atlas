@@ -1,29 +1,42 @@
-/** Shared presentational primitives reused across views. */
-import { type ReactNode } from 'react';
-import { FiSearch, FiExternalLink } from 'react-icons/fi';
+/** Shared presentational primitives + helpers reused across views. */
+import { forwardRef, type ReactNode } from 'react';
+import { ArrowSquareOut, MagnifyingGlass, X } from '@phosphor-icons/react';
 import type { AssetType } from './types';
 import { editorHref } from './lib/editor';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-/** Per-type badge text colors (mirrors the legend / graph palette). */
-const BADGE_TEXT: Record<string, string> = {
-  component: '#7fc4ff',
-  hook: '#c0a8ff',
-  utility: '#7be3a8',
-  context: '#ffce85',
-  store: '#ffb27d',
-  provider: '#ff9bb0',
-  route: '#e6a3ff',
+/** Identity hue per asset type (a token var). Dots only — text stays in ink. */
+export const TYPE_HUE: Record<string, string> = {
+  component: 'var(--color-t-component)',
+  hook: 'var(--color-t-hook)',
+  utility: 'var(--color-t-utility)',
+  context: 'var(--color-t-context)',
+  store: 'var(--color-t-store)',
+  provider: 'var(--color-t-provider)',
+  route: 'var(--color-t-route)',
+  file: 'var(--color-ink-faint)',
+  external: 'var(--color-ink-faint)',
 };
 
+/** Which browser page lists a given asset type. */
+export const PAGE_FOR: Record<string, string> = {
+  component: '/components',
+  hook: '/hooks',
+  utility: '/utils',
+  context: '/contexts',
+  store: '/contexts',
+  provider: '/contexts',
+  route: '/routes',
+};
+
+/** Table chrome: hairline rules, sticky header on the card surface. */
+export const TABLE_CLASS =
+  'w-full border-collapse text-[13px] [&_td]:border-b [&_td]:border-hairline-soft [&_td]:py-2.5 [&_td]:pr-4 [&_td]:align-middle [&_td]:text-ink-muted [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th]:sticky [&_th]:top-0 [&_th]:z-1 [&_th]:h-9 [&_th]:border-b [&_th]:border-hairline-soft [&_th]:bg-surface-1 [&_th]:pr-4 [&_th]:text-left [&_th]:text-[12px] [&_th]:font-medium [&_th]:whitespace-nowrap [&_th]:text-ink-faint [&_th:first-child]:pl-5 [&_th:last-child]:pr-5 [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-surface-2/50 [&_tr:last-child_td]:border-b-0';
+
 export function TypeBadge({ type }: { type: AssetType }) {
-  return (
-    <Badge withDot style={{ color: BADGE_TEXT[type] || 'var(--color-ink-faint)' }}>
-      {type}
-    </Badge>
-  );
+  return <Badge dot={TYPE_HUE[type] || 'var(--color-ink-faint)'}>{type}</Badge>;
 }
 
 export function SourceBadge({ source }: { source?: string }) {
@@ -33,6 +46,46 @@ export function SourceBadge({ source }: { source?: string }) {
 
 export function Tag({ children }: { children: ReactNode }) {
   return <Badge variant="tag">{children}</Badge>;
+}
+
+/** Last path segment, e.g. "/home/yash/Repo/chat-pdf" → "chat-pdf". */
+export function folderName(p: string): string {
+  if (!p) return p;
+  const parts = p.replace(/[\\/]+$/, '').split(/[\\/]/);
+  return parts[parts.length - 1] || p;
+}
+
+/** ISO timestamp → "Sep 24, 2026, 3:26 PM". */
+export function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** ISO timestamp → "3 hours ago" (falls back to the date past a week). */
+export function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return iso;
+  const s = Math.round((Date.now() - t) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+  if (s < 60) return rtf.format(-s, 'second');
+  if (s < 3600) return rtf.format(-Math.round(s / 60), 'minute');
+  if (s < 86400) return rtf.format(-Math.round(s / 3600), 'hour');
+  if (s < 604800) return rtf.format(-Math.round(s / 86400), 'day');
+  return formatTime(iso);
+}
+
+/** 1284 → "1,284"; 12900 → "12.9K". */
+export function compact(n: number): string {
+  return n >= 10000
+    ? new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+    : n.toLocaleString();
 }
 
 /**
@@ -62,7 +115,6 @@ export function EditorLink({
   const label = `Open ${path ?? 'file'}${line ? `:${line}` : ''} in editor`;
 
   if (!href) {
-    // No resolvable target — show the content inertly rather than a dead link.
     return iconOnly ? null : <span className={className}>{children}</span>;
   }
 
@@ -70,20 +122,21 @@ export function EditorLink({
     <a
       href={href}
       className={cn(
-        'group inline-flex max-w-full min-w-0 items-center gap-1.25 rounded-sm text-inherit no-underline transition-colors duration-120 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-ring',
-        iconOnly && 'p-0.75 opacity-55 hover:opacity-100',
+        'group/el inline-flex max-w-full min-w-0 items-center gap-1.25 rounded-xs text-inherit no-underline transition-colors duration-150 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent-ring focus-visible:outline-none',
+        iconOnly && 'p-0.75 text-ink-faint',
         className,
       )}
       title={label}
       aria-label={iconOnly ? label : undefined}
     >
       {children}
-      <FiExternalLink
+      <ArrowSquareOut
+        size={12}
         className={cn(
-          'h-3 w-3 shrink-0 text-accent transition-opacity duration-120',
+          'shrink-0 transition-opacity duration-150',
           iconOnly
             ? 'opacity-100'
-            : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
+            : 'opacity-0 group-hover/el:opacity-100 group-focus-visible/el:opacity-100',
         )}
         aria-hidden="true"
       />
@@ -91,34 +144,58 @@ export function EditorLink({
   );
 }
 
-/** A search input with the inline magnifier glyph (react-icons). */
-export function SearchField({
-  value,
-  onChange,
-  placeholder,
-  large,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  large?: boolean;
-}) {
+/** A search input with a leading glyph and a clear button once it has text. */
+export const SearchField = forwardRef<
+  HTMLInputElement,
+  {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    className?: string;
+    /** Accessible name when there's no visible label. */
+    label?: string;
+  }
+>(({ value, onChange, placeholder, className, label }, ref) => (
+  <div className={cn('relative min-w-0 flex-1', className)}>
+    <MagnifyingGlass
+      size={15}
+      className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-faint"
+    />
+    <Input
+      ref={ref}
+      type="search"
+      value={value}
+      placeholder={placeholder}
+      aria-label={label ?? placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && value) {
+          e.stopPropagation();
+          onChange('');
+        }
+      }}
+      className="pr-8 pl-9"
+    />
+    {value && (
+      <button
+        type="button"
+        aria-label="Clear search"
+        onClick={() => onChange('')}
+        className="absolute top-1/2 right-2 grid h-5 w-5 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-ink-faint hover:bg-surface-3 hover:text-ink"
+      >
+        <X size={11} weight="bold" />
+      </button>
+    )}
+  </div>
+));
+SearchField.displayName = 'SearchField';
+
+/** "12 / 80" filter result count. */
+export function FilterCount({ shown, total }: { shown: number; total: number }) {
   return (
-    <div className="relative flex-1">
-      <FiSearch
-        className={cn(
-          'pointer-events-none absolute top-1/2 -translate-y-1/2 text-ink-faint',
-          large ? 'left-4.5 h-4.5 w-4.5' : 'left-4 h-4 w-4',
-        )}
-      />
-      <Input
-        type="search"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(large ? 'rounded-lg py-3.75 pr-4.5 pl-11.5 text-base' : 'pl-10.5')}
-      />
-    </div>
+    <span className="shrink-0 text-[12px] whitespace-nowrap text-ink-faint tabular-nums">
+      <b className="font-medium text-ink-muted">{shown}</b> / {total}
+    </span>
   );
 }
 

@@ -1,9 +1,9 @@
 import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { FiCheck, FiChevronDown } from 'react-icons/fi';
+import { CaretDown, Check } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
-/** shadcn Select (Radix), themed to the Atlas palette. */
+/** shadcn Select (Radix) on Atlas tokens. */
 const Select = SelectPrimitive.Root;
 const SelectValue = SelectPrimitive.Value;
 
@@ -14,18 +14,16 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-between gap-2 rounded-full bg-surface-2 text-ink-muted',
-      'cursor-pointer px-4 py-2.75 text-sm tracking-[-0.012em]',
-      'whitespace-nowrap transition-[box-shadow,color] duration-150',
-      'focus:text-ink focus:ring-[3px] focus:ring-accent-soft focus:outline-none',
-      'data-[placeholder]:text-ink-muted [&>span]:truncate',
+      'inline-flex h-8 cursor-pointer items-center justify-between gap-2 rounded-md bg-surface-2 px-2.75 text-[12.5px] whitespace-nowrap text-ink-muted',
+      'shadow-[inset_0_0_0_1px_var(--color-hairline-soft)] transition-[box-shadow,color] duration-150 hover:text-ink',
+      'focus-visible:ring-[3px] focus-visible:ring-accent-ring focus-visible:outline-none [&>span]:truncate',
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <FiChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
+      <CaretDown size={12} weight="bold" className="shrink-0 text-ink-faint" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -40,8 +38,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'z-50 min-w-32 overflow-hidden rounded-md bg-surface-2 p-1.5',
-        'shadow-[0_20px_56px_-18px_rgba(0,0,0,0.75)]',
+        'z-50 min-w-32 overflow-hidden rounded-lg bg-surface-2 p-1 shadow-(--elevation-pop) animate-in',
         position === 'popper' && 'data-[side=bottom]:translate-y-1.5',
         className,
       )}
@@ -64,19 +61,15 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer items-center justify-between gap-4 rounded-sm select-none',
-      'px-2.5 py-2 text-sm tracking-[-0.012em] text-ink-muted outline-none',
-      // Keyboard/pointer highlight must be LIGHTER than the menu (surface-2),
-      // so arrow-key navigation is clearly visible.
-      'data-highlighted:bg-accent-soft data-highlighted:text-ink',
-      'data-[state=checked]:font-medium data-[state=checked]:text-ink',
+      'relative flex h-8 w-full cursor-pointer items-center justify-between gap-4 rounded-sm px-2 text-[13px] text-ink-muted outline-none select-none',
+      'data-highlighted:bg-surface-3 data-highlighted:text-ink data-[state=checked]:text-ink',
       className,
     )}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <SelectPrimitive.ItemIndicator>
-      <FiCheck className="h-3.5 w-3.5 text-accent" />
+      <Check size={13} weight="bold" className="text-accent" />
     </SelectPrimitive.ItemIndicator>
   </SelectPrimitive.Item>
 ));

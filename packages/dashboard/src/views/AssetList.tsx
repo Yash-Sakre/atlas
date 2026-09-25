@@ -1,22 +1,45 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FiInbox } from 'react-icons/fi';
-import { useData } from '../data';
-import type { Asset } from '../types';
-import { SearchField, SourceBadge, TypeBadge, useSearch } from '../ui';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import Detail from './Detail';
-import { cn } from '@/lib/utils';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { useSearchParams } from "react-router-dom";
+import { motion } from "motion/react";
+import { CursorClick, FunnelSimple, Tray } from "@phosphor-icons/react";
+import { useData } from "../data";
+import type { Asset } from "../types";
+import {
+  FilterCount,
+  SearchField,
+  SourceBadge,
+  TypeBadge,
+  useSearch,
+} from "../ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
+import Detail from "./Detail";
 
-type Usage = 'all' | 'used' | 'unused';
+type Usage = "all" | "used" | "unused";
 
-const SEARCH_KEYS = ['name'];
+const SEARCH_KEYS = ["name"];
+const TAG_LIMIT = 8;
+const NARROW = "(max-width: 900px)";
 
 const USAGE_TABS: Array<[Usage, string]> = [
-  ['all', 'All'],
-  ['used', 'Used'],
-  ['unused', 'Unused'],
+  ["all", "All"],
+  ["used", "Used"],
+  ["unused", "Unused"],
 ];
+
+const isNarrow = () => window.matchMedia(NARROW).matches;
 
 export default function AssetList({
   collection,
@@ -24,28 +47,40 @@ export default function AssetList({
   subtitle,
   placeholder,
 }: {
-  collection: 'components' | 'hooks' | 'utils' | 'contexts';
+  collection: "components" | "hooks" | "utils" | "contexts";
   title: string;
   subtitle: string;
   placeholder: string;
 }) {
   const data = useData();
-  const items = (data[collection] as Asset[]) || [];
+  const items = useMemo(
+    () => (data[collection] as Asset[]) || [],
+    [data, collection],
+  );
 
-  const [query, setQuery] = useState('');
-  const [usage, setUsage] = useState<Usage>('all');
+  const [params, setParams] = useSearchParams();
+  const focus = params.get("focus");
+
+  const [query, setQuery] = useState("");
+  const [usage, setUsage] = useState<Usage>("all");
   const [docsOnly, setDocsOnly] = useState(false);
-  const [tag, setTag] = useState('');
+  const [tag, setTag] = useState("");
   const [showAllTags, setShowAllTags] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const detailRef = useRef<HTMLElement>(null);
+
+  const detailRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
+  /** Row to bring into view once it has rendered (deep link / keyboard). */
+  const scrollTarget = useRef<string | null>(null);
 
   const filter = useSearch(items, SEARCH_KEYS);
 
   // Tags that actually appear in this collection, by frequency.
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
-    items.forEach((a) => (a.tags || []).forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)));
+    items.forEach((a) =>
+      (a.tags || []).forEach((t) => counts.set(t, (counts.get(t) || 0) + 1)),
+    );
     return Array.from(counts.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([t]) => t);
@@ -53,8 +88,9 @@ export default function AssetList({
 
   const list = useMemo(() => {
     let base = filter(query);
-    if (usage === 'used') base = base.filter((a) => (a.usageCount || 0) > 0);
-    else if (usage === 'unused') base = base.filter((a) => !(a.usageCount || 0));
+    if (usage === "used") base = base.filter((a) => (a.usageCount || 0) > 0);
+    else if (usage === "unused")
+      base = base.filter((a) => !(a.usageCount || 0));
     if (docsOnly) base = base.filter((a) => Boolean(a.description?.purpose));
     if (tag) base = base.filter((a) => (a.tags || []).includes(tag));
     base.sort((a, b) => a.name.localeCompare(b.name));
@@ -62,59 +98,101 @@ export default function AssetList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, usage, docsOnly, tag, items]);
 
-  const hasFilters = Boolean(query || usage !== 'all' || docsOnly || tag);
+  const hasFilters = Boolean(query || usage !== "all" || docsOnly || tag);
   function clearFilters() {
-    setQuery('');
-    setUsage('all');
+    setQuery("");
+    setUsage("all");
     setDocsOnly(false);
-    setTag('');
+    setTag("");
   }
 
-  // Auto-select the first item (wide screens) so the detail pane isn't empty.
+  // Deep link (`?focus=<id>`): select it, un-hide it, and bring it into view.
   useEffect(() => {
+    if (!focus || !items.some((i) => i.id === focus)) return;
+    if (!list.some((a) => a.id === focus)) clearFilters();
+    setSelectedId(focus);
+    scrollTarget.current = focus;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, items]);
+
+  // Otherwise auto-select the first item (wide screens) so the detail pane isn't empty.
+  useEffect(() => {
+    if (focus && items.some((i) => i.id === focus)) return;
     if (selectedId && items.some((i) => i.id === selectedId)) return;
-    const isNarrow = window.matchMedia('(max-width: 900px)').matches;
-    if (!isNarrow && list.length) setSelectedId(list[0].id);
+    if (!isNarrow() && list.length) setSelectedId(list[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection]);
 
+  // Scroll a pending row into view after it renders (filters may have just cleared).
+  useEffect(() => {
+    const id = scrollTarget.current;
+    if (!id) return;
+    const el = rowRefs.current.get(id);
+    if (el) {
+      el.scrollIntoView({ block: "nearest" });
+      scrollTarget.current = null;
+    }
+  });
+
   const selected = items.find((i) => i.id === selectedId) || null;
 
-  function select(id: string) {
+  function select(id: string, opts: { fromKeyboard?: boolean } = {}) {
     setSelectedId(id);
-    if (window.matchMedia('(max-width: 900px)').matches) {
-      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const next = new URLSearchParams(params);
+    next.set("focus", id);
+    setParams(next, { replace: true });
+    if (opts.fromKeyboard) {
+      const el = rowRefs.current.get(id);
+      el?.focus({ preventScroll: true });
+      el?.scrollIntoView({ block: "nearest" });
+    } else if (isNarrow()) {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
-  const visibleTags = showAllTags ? tags : tags.slice(0, 8);
+  function onListKeyDown(e: KeyboardEvent<HTMLElement>) {
+    if (!list.length) return;
+    const idx = list.findIndex((a) => a.id === selectedId);
+    let next = -1;
+    if (e.key === "ArrowDown")
+      next = idx < 0 ? 0 : Math.min(list.length - 1, idx + 1);
+    else if (e.key === "ArrowUp") next = idx < 0 ? 0 : Math.max(0, idx - 1);
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = list.length - 1;
+    else return;
+    e.preventDefault();
+    if (next !== idx) select(list[next].id, { fromKeyboard: true });
+  }
+
+  const tabbableId = list.some((a) => a.id === selectedId)
+    ? selectedId
+    : (list[0]?.id ?? null);
+  const visibleTags = showAllTags ? tags : tags.slice(0, TAG_LIMIT);
+  const noun = title.toLowerCase();
 
   return (
     <>
-      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
-        <div className="min-w-0">
-          <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
-            {title}
-          </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-            {subtitle}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium tabular-nums text-ink-muted">
-            {items.length} total
-          </span>
-        </div>
-      </div>
+      <PageHeader
+        title={title}
+        description={subtitle}
+        actions={
+          <Badge variant="outline">{items.length.toLocaleString()} total</Badge>
+        }
+      />
 
-      <div className="grid min-h-0 flex-1 grid-cols-[360px_minmax(0,1fr)] items-stretch gap-5.5 max-[900px]:grid-cols-1">
-        <aside className="flex h-full min-h-0 flex-col gap-3">
-          <div className="flex flex-col gap-2.5">
-            <SearchField value={query} onChange={setQuery} placeholder={placeholder} />
+      <div className="grid min-h-0 flex-1 grid-cols-[340px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-none">
+        {/* ── Master list ── */}
+        <Card className="min-h-0 overflow-hidden">
+          <div className="flex shrink-0 flex-col gap-2.5 border-b border-hairline-soft p-3">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              placeholder={placeholder}
+            />
 
             <div className="flex items-center justify-between gap-2.5">
               <Tabs value={usage} onValueChange={(v) => setUsage(v as Usage)}>
-                <TabsList>
+                <TabsList aria-label="Usage filter">
                   {USAGE_TABS.map(([key, label]) => (
                     <TabsTrigger key={key} value={key}>
                       {label}
@@ -122,108 +200,162 @@ export default function AssetList({
                   ))}
                 </TabsList>
               </Tabs>
-              <span className="shrink-0 text-[12.5px] whitespace-nowrap tabular-nums text-ink-faint">
-                <b className="font-semibold text-ink-muted">{list.length}</b> / {items.length}
-              </span>
+              <FilterCount shown={list.length} total={items.length} />
             </div>
 
-            <div className="flex items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <ToggleGroup
                 type="multiple"
-                value={docsOnly ? ['documented'] : []}
-                onValueChange={(v) => setDocsOnly(v.includes('documented'))}
+                aria-label="Documentation filter"
+                value={docsOnly ? ["documented"] : []}
+                onValueChange={(v) => setDocsOnly(v.includes("documented"))}
               >
+                <ToggleGroupItem value="documented">Documented</ToggleGroupItem>
               </ToggleGroup>
+
+              {tags.length > 0 && (
+                <>
+                  <span
+                    className="mx-0.5 h-4 w-px bg-hairline"
+                    aria-hidden="true"
+                  />
+                  <ToggleGroup
+                    type="single"
+                    aria-label="Tag filter"
+                    value={tag}
+                    onValueChange={setTag}
+                    className="contents"
+                  >
+                    {visibleTags.map((t) => (
+                      <ToggleGroupItem key={t} value={t}>
+                        {t}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                  {tags.length > TAG_LIMIT && (
+                    <button
+                      type="button"
+                      aria-expanded={showAllTags}
+                      onClick={() => setShowAllTags((v) => !v)}
+                      className="inline-flex h-7 cursor-pointer items-center rounded-full px-2 text-[12px] font-medium text-ink-faint tabular-nums transition-colors duration-150 hover:text-ink focus-visible:ring-[3px] focus-visible:ring-accent-ring focus-visible:outline-none"
+                    >
+                      {showAllTags
+                        ? "Show less"
+                        : `+${tags.length - TAG_LIMIT} more`}
+                    </button>
+                  )}
+                </>
+              )}
+
               {hasFilters && (
-                <button
-                  type="button"
-                  className="cursor-pointer border-none bg-none p-0 text-xs text-accent hover:underline"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={clearFilters}
+                  className="ml-auto h-7 px-2"
                 >
                   Clear
-                </button>
+                </Button>
               )}
             </div>
-
-            {tags.length > 0 && (
-              <ToggleGroup
-                type="single"
-                value={tag}
-                onValueChange={setTag}
-                className="flex flex-wrap gap-1.5"
-              >
-                {visibleTags.map((t) => (
-                  <ToggleGroupItem key={t} value={t}>
-                    {t}
-                  </ToggleGroupItem>
-                ))}
-                {tags.length > 8 && (
-                  <button
-                    type="button"
-                    className="cursor-pointer self-center border-none bg-none p-0 pl-0.5 text-xs text-accent hover:underline"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowAllTags((v) => !v);
-                    }}
-                  >
-                    {showAllTags ? 'Less' : `+${tags.length - 8} more`}
-                  </button>
-                )}
-              </ToggleGroup>
-            )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain pr-1 max-[900px]:max-h-105">
-            {list.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-10 text-center text-[13.5px] text-ink-faint">
-                <FiInbox size={26} strokeWidth={1.6} />
-                <p>No {title.toLowerCase()} match your filters.</p>
-              </div>
+          <motion.div
+            layoutScroll
+            role="list"
+            aria-label={title}
+            onKeyDown={onListKeyDown}
+            className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto overscroll-contain p-1.5 max-[900px]:max-h-105"
+          >
+            {items.length === 0 ? (
+              <EmptyState icon={<Tray size={20} />} title={`No ${noun} found`}>
+                The analyzer didn't find any {noun} in this project.
+              </EmptyState>
+            ) : list.length === 0 ? (
+              <EmptyState
+                icon={<FunnelSimple size={20} />}
+                title={`No ${noun} match your filters`}
+                action={
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                }
+              />
             ) : (
-              list.map((a) => (
-                <button
-                  key={a.id}
-                  className={cn(
-                    'w-full cursor-pointer rounded-md bg-surface-1 px-3.25 py-2.75 text-left transition-[background-color,box-shadow] duration-120 hover:bg-surface-2',
-                    a.id === selectedId &&
-                      'bg-surface-2 shadow-[inset_2px_0_0_var(--color-accent)]',
-                  )}
-                  onClick={() => select(a.id)}
-                >
-                  <div className="flex items-center justify-between gap-2.5">
-                    <span className="min-w-0 truncate font-mono text-[13.5px] font-semibold tracking-normal text-ink">
-                      {a.name}
-                    </span>
-                    <TypeBadge type={a.type} />
+              list.map((a) => {
+                const active = a.id === selectedId;
+                return (
+                  <div role="listitem" key={a.id}>
+                    <button
+                      type="button"
+                      ref={(el) => {
+                        if (el) rowRefs.current.set(a.id, el);
+                        else rowRefs.current.delete(a.id);
+                      }}
+                      aria-current={active ? "true" : undefined}
+                      tabIndex={a.id === tabbableId ? 0 : -1}
+                      onClick={() => select(a.id)}
+                      className={cn(
+                        "relative block w-full cursor-pointer scroll-my-1.5 rounded-md px-3 py-2.5 text-left transition-colors duration-150 outline-none",
+                        "focus-visible:ring-[3px] focus-visible:ring-accent-ring",
+                        !active && "hover:bg-surface-2/60",
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId={`asset-sel-${collection}`}
+                          aria-hidden="true"
+                          transition={{
+                            type: "spring",
+                            bounce: 0.12,
+                            duration: 0.3,
+                          }}
+                          className="absolute inset-0 rounded-md bg-surface-2"
+                        >
+                          <span className="absolute top-2.5 bottom-2.5 left-0 w-0.5 rounded-full bg-accent" />
+                        </motion.span>
+                      )}
+                      <span className="relative z-1 block">
+                        <span className="flex items-center justify-between gap-2.5">
+                          <span className="min-w-0 truncate font-mono text-[13px] font-medium text-ink">
+                            {a.name}
+                          </span>
+                          <TypeBadge type={a.type} />
+                        </span>
+                        <span className="mt-0.5 block truncate font-mono text-[11px] text-ink-faint">
+                          {a.path}
+                        </span>
+                        <span className="mt-2 flex items-center justify-between gap-2">
+                          <span className="text-[11.5px] text-ink-faint tabular-nums">
+                            used {a.usageCount || 0}×
+                          </span>
+                          <SourceBadge source={a.description?.source} />
+                        </span>
+                      </span>
+                    </button>
                   </div>
-                  <span className="mt-0.75 block truncate font-mono text-[11px] tracking-normal text-ink-faint">
-                    {a.path}
-                  </span>
-                  <div className="mt-2.25 flex items-center justify-between gap-2">
-                    <span className="text-[11px] tabular-nums text-ink-faint">
-                      used {a.usageCount || 0}×
-                    </span>
-                    <SourceBadge source={a.description?.source} />
-                  </div>
-                </button>
-              ))
+                );
+              })
             )}
-          </div>
-        </aside>
+          </motion.div>
+        </Card>
 
-        <section
-          ref={detailRef}
-          className="h-full min-w-0 overflow-y-auto overscroll-contain rounded-lg bg-surface-1 shadow-card max-[900px]:h-auto max-[900px]:overflow-hidden"
-        >
-          {selected ? (
-            <Detail asset={selected} />
-          ) : (
-            <div className="flex h-full min-h-85 flex-col items-center justify-center gap-3 p-12 text-center text-sm text-ink-faint [&>svg]:text-ink-faint [&>svg]:opacity-70">
-              <FiInbox size={32} strokeWidth={1.5} />
-              <p>Select an asset to view its details</p>
-            </div>
-          )}
-        </section>
+        {/* ── Detail ── */}
+        <div ref={detailRef} className="flex min-h-0 max-[900px]:scroll-mt-4">
+          <Card className="min-h-0 flex-1 overflow-hidden max-[900px]:min-h-85">
+            {selected ? (
+              <Detail asset={selected} />
+            ) : (
+              <EmptyState
+                icon={<CursorClick size={20} />}
+                title="Nothing selected"
+                className="h-full"
+              >
+                Its description, API and usages show up here.
+              </EmptyState>
+            )}
+          </Card>
+        </div>
       </div>
     </>
   );

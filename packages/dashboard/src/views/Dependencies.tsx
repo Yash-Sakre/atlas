@@ -1,20 +1,38 @@
-import { useMemo, useState } from 'react';
+/**
+ * Declared dependencies, enriched live from the npm registry.
+ *
+ * The analyzer records only what package.json declares (offline). Latest
+ * version, description and links are fetched lazily in the browser — and only
+ * for registry packages: local/git/workspace links have no npm page to check.
+ */
+import { useMemo, useState, type ReactNode } from 'react';
 import {
-  FiPackage,
-  FiExternalLink,
-  FiGithub,
-  FiHome,
-  FiArrowUp,
-  FiCheck,
-  FiInbox,
-} from 'react-icons/fi';
-import { FaNpm } from 'react-icons/fa';
+  ArrowUp,
+  CaretDown,
+  CaretUp,
+  CaretUpDown,
+  CheckCircle,
+  CircleNotch,
+  FunnelSimple,
+  GitBranch,
+  GithubLogo,
+  House,
+  Package,
+  Warning,
+} from '@phosphor-icons/react';
 import { useData } from '../data';
-import type { DependencyInfo, DependencyKind } from '../types';
-import { SearchField, useSearch } from '../ui';
+import type { DependencyInfo, DependencyKind, DependencySource } from '../types';
+import { FilterCount, SearchField, TABLE_CLASS, useSearch } from '../ui';
 import { useNpmRegistry, isOutdated, sourceOf, SOURCE_LABEL, type NpmMeta } from '../lib/npm';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 const KIND_LABEL: Record<DependencyKind, string> = {
   prod: 'prod',
@@ -23,18 +41,22 @@ const KIND_LABEL: Record<DependencyKind, string> = {
   optional: 'optional',
 };
 
-const KIND_COLOR: Record<DependencyKind, string> = {
-  prod: '#7be3a8',
-  dev: 'var(--color-ink-faint)',
-  peer: '#ffce85',
-  optional: '#c0a8ff',
+/** Identity dot per kind — always beside the kind's name, never alone. */
+const KIND_HUE: Record<DependencyKind, string> = {
+  prod: 'var(--color-chart-1)',
+  dev: 'var(--color-chart-3)',
+  peer: 'var(--color-t-context)',
+  optional: 'var(--color-t-hook)',
 };
 
 const KIND_ORDER: DependencyKind[] = ['prod', 'dev', 'peer', 'optional'];
 
-/** Table chrome: hairline rules, sticky headers, top-aligned cells. */
-const TABLE_CLASS =
-  'w-full border-collapse text-[13.5px] [&_td]:border-b [&_td]:border-hairline-soft [&_td]:py-2.25 [&_td]:pr-4 [&_td]:align-top [&_td]:text-ink-muted [&_td:first-child]:min-w-[200px] [&_td:first-child]:text-ink [&_th]:sticky [&_th]:top-0 [&_th]:z-1 [&_th]:border-b [&_th]:border-hairline-soft [&_th]:bg-surface-1 [&_th]:py-2 [&_th]:pr-4 [&_th]:text-left [&_th]:text-[12.5px] [&_th]:font-medium [&_th]:text-ink-muted [&_tr:last-child_td]:border-b-0';
+type SortKey = 'name' | 'used';
+type Sort = { key: SortKey; dir: 'asc' | 'desc' } | null;
+
+const SEARCH_KEYS = ['name'];
+
+const current = (d: DependencyInfo) => d.installed || d.range;
 
 export default function Dependencies() {
   const data = useData();
@@ -52,9 +74,11 @@ export default function Dependencies() {
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<string[]>([]);
   const [flags, setFlags] = useState<string[]>([]);
-  const search = useSearch(deps, ['name']);
+  const [sort, setSort] = useState<Sort>(null);
+  const search = useSearch(deps, SEARCH_KEYS);
 
-  const current = (d: DependencyInfo) => d.installed || d.range;
+  // `npm` is a fresh object each render; only the resolved versions matter here.
+  const latestKey = registryNames.map((n) => npm[n]?.latest ?? '').join(',');
   const outdatedSet = useMemo(() => {
     const s = new Set<string>();
     for (const d of deps) {
@@ -62,7 +86,9 @@ export default function Dependencies() {
     }
     return s;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deps, npm]);
+  }, [deps, latestKey]);
+
+  const checking = registryNames.filter((n) => npm[n]?.status === 'loading').length;
 
   const kindsPresent = useMemo(
     () => KIND_ORDER.filter((k) => deps.some((d) => d.kind === k)),
@@ -74,148 +100,262 @@ export default function Dependencies() {
     if (kindFilter.length) base = base.filter((d) => kindFilter.includes(d.kind));
     if (flags.includes('outdated')) base = base.filter((d) => outdatedSet.has(d.name));
     if (flags.includes('unused')) base = base.filter((d) => d.usedInCount === 0);
+    if (sort) {
+      const sign = sort.dir === 'asc' ? 1 : -1;
+      base.sort((a, b) =>
+        sort.key === 'name'
+          ? sign * a.name.localeCompare(b.name)
+          : sign * ((a.usedInCount || 0) - (b.usedInCount || 0)) || a.name.localeCompare(b.name),
+      );
+    }
     return base;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, kindFilter, flags, deps, outdatedSet]);
+  }, [query, kindFilter, flags, sort, deps, outdatedSet]);
+
+  const filtered = !!query || kindFilter.length > 0 || flags.length > 0;
+  const clearFilters = () => {
+    setQuery('');
+    setKindFilter([]);
+    setFlags([]);
+  };
+
+  const toggleSort = (key: SortKey) =>
+    setSort((s) =>
+      s?.key === key
+        ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: key === 'name' ? 'asc' : 'desc' },
+    );
 
   if (!report || deps.length === 0) {
     return (
       <>
-        <Head total={0} outdated={0} />
-        <div className="flex items-center gap-4 rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-          <FiPackage size={26} className="text-ink-faint" />
-          <div>
-            <h2 className="m-0 mb-1 font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
-              No dependencies found
-            </h2>
-            <p className="text-ink-faint">
-              Atlas didn’t find a package.json with declared dependencies at the project root.
-            </p>
-          </div>
-        </div>
+        <PageHeader title="Dependencies" description="Packages declared in package.json." />
+        <Card>
+          <EmptyState icon={<Package size={20} />} title="No dependencies found">
+            Atlas didn’t find a package.json with declared dependencies at the project root.
+          </EmptyState>
+        </Card>
       </>
     );
   }
 
   const c = report.counts;
   const unused = deps.filter((d) => d.usedInCount === 0).length;
-  const kpis: Array<{ label: string; n: number; hue: string }> = [
-    { label: 'Total', n: c.total, hue: 'var(--color-t-component)' },
-    { label: 'Production', n: c.prod, hue: KIND_COLOR.prod },
-    { label: 'Dev', n: c.dev, hue: 'var(--color-ink-faint)' },
-    { label: 'Updates', n: outdatedSet.size, hue: 'var(--color-warn)' },
-    { label: 'Unused', n: unused, hue: 'var(--color-warn)' },
-  ];
+  const nonRegistry = deps.filter((d) => sourceOf(d) !== 'registry');
+  const bySource = new Map<DependencySource, number>();
+  for (const d of nonRegistry) bySource.set(sourceOf(d), (bySource.get(sourceOf(d)) || 0) + 1);
+  const sourceHint = nonRegistry.length
+    ? [...bySource].map(([s, n]) => `${n} ${SOURCE_LABEL[s]}`).join(' · ')
+    : 'all from npm';
+
+  const updates = outdatedSet.size;
+  const status = updates ? (
+    <Badge variant="warn">
+      <ArrowUp size={11} weight="bold" />
+      {updates} update{updates === 1 ? '' : 's'} available
+    </Badge>
+  ) : checking ? (
+    <Badge>
+      <CircleNotch size={11} weight="bold" className="animate-spin" />
+      Checking npm…
+    </Badge>
+  ) : (
+    <Badge variant="success">
+      <CheckCircle size={11} weight="fill" />
+      All up to date
+    </Badge>
+  );
 
   return (
     <>
-      <Head total={c.total} outdated={outdatedSet.size} />
+      <PageHeader
+        title="Dependencies"
+        description="Packages declared in package.json, enriched live from the npm registry. Click a name to open it on npm."
+        actions={status}
+      />
 
-      <div className="mb-4 grid grid-cols-5 gap-4 max-[1180px]:grid-cols-3 max-[620px]:grid-cols-2">
-        {kpis.map((k) => (
-          <div
-            key={k.label}
-            className="relative flex cursor-default flex-col gap-3 rounded-2xl bg-surface-1 px-4.5 pt-4.5 pb-4.25 shadow-card"
-          >
-            <div className="flex items-center gap-1.75">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: k.hue }} />
-              <span className="text-[12.5px] tracking-[-0.01em] text-ink-muted">{k.label}</span>
-            </div>
-            <div className="font-display text-[34px] leading-[0.9] font-semibold tracking-[-0.04em] tabular-nums text-ink">
-              {k.n}
-            </div>
-          </div>
-        ))}
+      <div className="mb-4 grid shrink-0 grid-cols-4 gap-4 max-[1180px]:grid-cols-2 max-[560px]:grid-cols-1">
+        <StatCard
+          label="Total"
+          value={c.total}
+          hint={`${c.prod} prod · ${c.dev} dev`}
+          info="Every dependency declared across package.json files, including peer and optional."
+        />
+        <StatCard
+          label="Updates available"
+          value={updates}
+          hint={checking ? `checking ${checking} on npm…` : `of ${registryNames.length} on npm`}
+          info="Registry packages whose latest published version is newer than the installed (or declared) one."
+          badge={
+            checking
+              ? undefined
+              : updates
+                ? { text: 'Update', tone: 'warn', icon: <ArrowUp size={11} weight="bold" /> }
+                : { text: 'Current', tone: 'success', icon: <CheckCircle size={11} weight="fill" /> }
+          }
+        />
+        <StatCard
+          label="Unused"
+          value={unused}
+          hint="declared, never imported"
+          info="No source file imports this package by its bare name. CLI tools and config plugins often show up here legitimately."
+          badge={
+            unused
+              ? { text: 'Review', tone: 'warn', icon: <Warning size={11} weight="fill" /> }
+              : { text: 'All used', tone: 'success', icon: <CheckCircle size={11} weight="fill" /> }
+          }
+        />
+        <StatCard
+          label="Non-registry"
+          value={nonRegistry.length}
+          hint={sourceHint}
+          info="Resolved from a local path, git, a URL or the workspace protocol — no npm page or update check."
+        />
       </div>
 
-      <section className="flex min-h-0 flex-auto flex-col rounded-2xl bg-surface-1 px-6 py-5.5 shadow-card">
-        <div className="mb-4.5 flex flex-wrap items-center gap-3">
-          <SearchField value={query} onChange={setQuery} placeholder="Search dependencies…" />
+      <Card className="min-h-0 flex-1 overflow-hidden max-[900px]:overflow-visible">
+        <CardHeader className="flex-wrap justify-start gap-x-3 gap-y-2.5 pb-3.5">
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search dependencies…"
+            className="max-w-xs min-w-48"
+          />
           {kindsPresent.length > 1 && (
-            <ToggleGroup
-              type="multiple"
-              value={kindFilter}
-              onValueChange={setKindFilter}
-              className="flex flex-wrap gap-1.5"
-            >
+            <ToggleGroup type="multiple" value={kindFilter} onValueChange={setKindFilter} aria-label="Filter by kind">
               {kindsPresent.map((k) => (
                 <ToggleGroupItem key={k} value={k} title={`Show only ${k} dependencies`}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: KIND_HUE[k] }} aria-hidden="true" />
                   {KIND_LABEL[k]}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
           )}
-          <ToggleGroup
-            type="multiple"
-            value={flags}
-            onValueChange={setFlags}
-            className="flex flex-wrap gap-1.5"
-          >
+          <ToggleGroup type="multiple" value={flags} onValueChange={setFlags} aria-label="Filter by status">
             <ToggleGroupItem value="outdated" title="Only packages with a newer version">
-              updates
+              <ArrowUp size={12} />
+              Updates
             </ToggleGroupItem>
             <ToggleGroupItem value="unused" title="Declared but never imported">
-              unused
+              <Warning size={12} />
+              Unused
             </ToggleGroupItem>
           </ToggleGroup>
-        </div>
+          <span className="ml-auto">
+            <FilterCount shown={rows.length} total={deps.length} />
+          </span>
+        </CardHeader>
 
         {rows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-10 text-center text-[13.5px] text-ink-faint">
-            <FiInbox size={24} strokeWidth={1.6} />
-            <p>No dependencies match your filters.</p>
-          </div>
+          <EmptyState
+            icon={<FunnelSimple size={20} />}
+            title="No dependencies match your filters"
+            action={
+              filtered && (
+                <Button size="sm" variant="outline" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )
+            }
+          />
         ) : (
-          <div className="min-h-0 flex-auto overflow-x-auto overflow-y-auto overscroll-contain max-[900px]:overflow-y-visible">
+          <div className="min-h-0 flex-1 overflow-auto overscroll-contain max-[900px]:overflow-y-visible">
             <table className={TABLE_CLASS}>
               <thead>
                 <tr>
-                  <th>Package</th>
+                  <SortHeader label="Package" active={sort?.key === 'name' ? sort.dir : null} onSort={() => toggleSort('name')} />
                   <th>Kind</th>
                   <th>Declared</th>
                   <th>Installed</th>
                   <th>Latest</th>
-                  <th>Used in</th>
-                  <th>Links</th>
+                  <SortHeader label="Used in" active={sort?.key === 'used' ? sort.dir : null} onSort={() => toggleSort('used')} />
+                  <th>
+                    <span className="sr-only">Links</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((d) => (
-                  <Row key={d.name} dep={d} meta={npm[d.name]} outdated={outdatedSet.has(d.name)} />
+                  <Row key={`${d.workspace ?? ''}:${d.name}`} dep={d} meta={npm[d.name]} outdated={outdatedSet.has(d.name)} />
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </section>
+      </Card>
     </>
   );
 }
+
+/* ─────────────────────────────── Pieces ─────────────────────────────── */
+
+function SortHeader({
+  label,
+  active,
+  onSort,
+}: {
+  label: string;
+  active: 'asc' | 'desc' | null;
+  onSort: () => void;
+}) {
+  const Caret = active === 'asc' ? CaretUp : active === 'desc' ? CaretDown : CaretUpDown;
+  return (
+    <th aria-sort={active === 'asc' ? 'ascending' : active === 'desc' ? 'descending' : 'none'}>
+      <button
+        type="button"
+        onClick={onSort}
+        className={cn(
+          '-mx-1 inline-flex cursor-pointer items-center gap-1 rounded-xs px-1 py-0.5 transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-accent-ring focus-visible:outline-none',
+          active && 'text-ink-muted',
+        )}
+      >
+        {label}
+        <Caret size={11} weight="bold" className={active ? 'text-ink' : 'opacity-60'} aria-hidden="true" />
+      </button>
+    </th>
+  );
+}
+
+function IconLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
+  return (
+    <Tooltip content={label}>
+      <Button asChild variant="ghost" size="icon-sm">
+        <a href={href} target="_blank" rel="noreferrer" aria-label={label}>
+          {children}
+        </a>
+      </Button>
+    </Tooltip>
+  );
+}
+
+const Dash = ({ title }: { title?: string }) => (
+  <span className="font-mono text-ink-faint" title={title}>
+    —
+  </span>
+);
 
 function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; outdated: boolean }) {
   const source = sourceOf(dep);
   const isRegistry = source === 'registry';
   const status = meta?.status ?? 'loading';
+  const isGithub = !!meta?.repoUrl && /github\.com/.test(meta.repoUrl);
+
   return (
     <tr>
-      <td>
-        <div className="flex min-w-0 items-center gap-2">
+      <td className="min-w-55">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           {isRegistry && dep.npmUrl ? (
             <a
               href={dep.npmUrl}
               target="_blank"
               rel="noreferrer"
-              className="group inline-flex max-w-full min-w-0 items-center gap-1.25 rounded-sm font-mono text-[13.5px] font-medium tracking-normal text-inherit no-underline transition-colors duration-120 hover:text-accent"
+              className="truncate rounded-xs font-mono text-[13px] font-medium text-ink no-underline hover:underline focus-visible:ring-2 focus-visible:ring-accent-ring focus-visible:outline-none"
               title={`${dep.name} on npm`}
             >
               {dep.name}
-              <FiExternalLink
-                className="h-3 w-3 shrink-0 text-accent opacity-0 transition-opacity duration-120 group-hover:opacity-100"
-                aria-hidden="true"
-              />
             </a>
           ) : (
-            <span className="font-mono font-medium tracking-normal text-ink">{dep.name}</span>
+            <span className="truncate font-mono text-[13px] font-medium text-ink">{dep.name}</span>
           )}
           {!isRegistry && (
             <Badge variant="tag" title={`Resolved from a ${source} source, not the npm registry`}>
@@ -223,117 +363,78 @@ function Row({ dep, meta, outdated }: { dep: DependencyInfo; meta?: NpmMeta; out
             </Badge>
           )}
           {dep.workspace && (
-            <Badge variant="tag" title={`Declared in ${dep.workspace}`}>{dep.workspace}</Badge>
+            <Badge variant="tag" title={`Declared in ${dep.workspace}`}>
+              {dep.workspace}
+            </Badge>
           )}
         </div>
         {isRegistry && status === 'ok' && meta?.description && (
-          <p className="mt-0.75 mb-0 max-w-[460px] truncate text-xs text-ink-faint" title={meta.description}>
+          <p className="mt-0.5 mb-0 max-w-100 truncate text-[12px] text-ink-faint" title={meta.description}>
             {meta.description}
           </p>
         )}
       </td>
       <td>
-        <Badge withDot style={{ color: KIND_COLOR[dep.kind] }}>{KIND_LABEL[dep.kind]}</Badge>
+        <Badge dot={KIND_HUE[dep.kind]}>{KIND_LABEL[dep.kind]}</Badge>
       </td>
-      <td className="font-mono tracking-normal text-ink-faint">{dep.range}</td>
-      <td className="font-mono tracking-normal">
-        {dep.installed || <span className="text-ink-faint">—</span>}
-      </td>
-      <td>
+      <td className="font-mono text-[12.5px] whitespace-nowrap text-ink-faint">{dep.range}</td>
+      <td className="font-mono text-[12.5px] whitespace-nowrap">{dep.installed || <Dash title="Not installed" />}</td>
+      <td className="whitespace-nowrap">
         {!isRegistry ? (
-          <span className="font-mono tracking-normal text-ink-faint" title={`Linked from a ${source} source`}>
-            —
-          </span>
+          <Dash title={`Linked from a ${source} source`} />
         ) : status === 'loading' ? (
-          <span className="font-mono tracking-normal text-ink-faint">…</span>
+          <span className="inline-block h-4 w-14 animate-pulse rounded-full bg-surface-2 align-middle" aria-label="Checking npm" />
         ) : status === 'error' ? (
-          <span
-            className="font-mono tracking-normal text-ink-faint"
-            title="Couldn’t reach the npm registry"
-          >
+          <span className="font-mono text-[12.5px] text-ink-faint" title="Couldn’t reach the npm registry">
             n/a
           </span>
         ) : outdated ? (
-          <span
-            className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-[12.5px] text-warn"
-            title={`Newer version available: ${meta?.latest}`}
-          >
-            <FiArrowUp size={12} />
-            <span className="font-mono tracking-normal">{meta?.latest}</span>
-          </span>
+          <Badge variant="warn" title={`Newer version available: ${meta?.latest}`}>
+            <ArrowUp size={11} weight="bold" />
+            <span className="font-mono">{meta?.latest}</span>
+          </Badge>
         ) : (
-          <span
-            className="inline-flex items-center gap-1 font-mono text-[12.5px] tracking-normal text-success"
-            title="Up to date"
-          >
-            <FiCheck size={12} /> {meta?.latest}
-          </span>
+          <Badge variant="success" title="Up to date">
+            <CheckCircle size={11} weight="fill" />
+            <span className="font-mono">{meta?.latest}</span>
+          </Badge>
         )}
       </td>
-      <td>
+      <td className="tabular-nums">
         {dep.usedInCount > 0 ? (
-          <span className="tabular-nums" title={`Imported in ${dep.usedInCount} file(s)`}>
-            {dep.usedInCount}
+          <span title={`Imported in ${dep.usedInCount} file${dep.usedInCount === 1 ? '' : 's'}`}>
+            {dep.usedInCount} file{dep.usedInCount === 1 ? '' : 's'}
           </span>
         ) : (
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium text-warn"
-            title="Declared but never imported"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            unused
-          </span>
+          <Badge variant="warn" title="Declared but never imported">
+            <Warning size={11} weight="fill" />
+            Unused
+          </Badge>
         )}
       </td>
       <td>
         {isRegistry ? (
-          <div className="inline-flex items-center gap-2.5 text-ink-faint [&_a]:inline-flex [&_a]:text-inherit [&_a]:transition-colors [&_a:hover]:text-accent">
+          <div className="-my-1 inline-flex items-center gap-0.5 text-ink-faint">
             {dep.npmUrl && (
-              <a href={dep.npmUrl} target="_blank" rel="noreferrer" title="View on npm" aria-label="View on npm">
-                <FaNpm size={19} />
-              </a>
+              <IconLink href={dep.npmUrl} label="View on npm">
+                <Package size={15} />
+              </IconLink>
             )}
             {meta?.homepage && (
-              <a href={meta.homepage} target="_blank" rel="noreferrer" title="Homepage" aria-label="Homepage">
-                <FiHome size={15} />
-              </a>
+              <IconLink href={meta.homepage} label="Homepage">
+                <House size={15} />
+              </IconLink>
             )}
             {meta?.repoUrl && (
-              <a href={meta.repoUrl} target="_blank" rel="noreferrer" title="Repository" aria-label="Repository">
-                <FiGithub size={15} />
-              </a>
+              <IconLink href={meta.repoUrl} label="Repository">
+                {isGithub ? <GithubLogo size={15} /> : <GitBranch size={15} />}
+              </IconLink>
             )}
           </div>
         ) : (
-          <span className="text-ink-faint">—</span>
+          <Dash />
         )}
       </td>
     </tr>
-  );
-}
-
-function Head({ total, outdated }: { total: number; outdated: number }) {
-  return (
-    <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5 border-b border-hairline-soft pb-4.5">
-      <div className="min-w-0">
-        <h1 className="m-0 font-display text-2xl leading-[1.1] font-semibold tracking-[-0.03em] text-ink">
-          Dependencies
-        </h1>
-        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-          Third-party packages declared in package.json — enriched live from the npm registry.
-          Click a name to open it on npm.
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2.5">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.75 py-1 text-xs font-medium ${
-            outdated ? 'text-warn' : 'text-success'
-          }`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-current" />
-          {total ? (outdated ? `${outdated} update${outdated > 1 ? 's' : ''} available` : 'All up to date') : 'None'}
-        </span>
-      </div>
-    </div>
   );
 }
